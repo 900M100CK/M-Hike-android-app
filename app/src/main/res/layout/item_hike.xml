@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  item_hike.xml
+  RecyclerView list item for a single hike.
+  Material Design 3 card. Minimum 56dp row height (touch target).
+  NOTE: Chip replaced with MaterialTextView badge to avoid ChipGroup requirement.
+-->
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="4dp"
+    android:layout_marginVertical="4dp"
+    app:cardElevation="2dp"
+    app:cardCornerRadius="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:minHeight="56dp"
+        android:gravity="center_vertical">
+
+        <!-- Parking badge (circular) -->
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/textParkingStatus"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:gravity="center"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/bg_parking_badge"
+            android:layout_marginEnd="12dp"
+            tools:text="P" />
+
+        <!-- Main info column -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <!-- Hike name -->
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/textHikeName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:maxLines="1"
+                android:ellipsize="end"
+                tools:text="Snowdon Summit Route" />
+
+            <!-- Location & Date row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="2dp">
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/textHikeLocation"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    tools:text="Snowdonia, Wales" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/textHikeDate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:layout_marginStart="8dp"
+                    tools:text="2024-07-20" />
+
+            </LinearLayout>
+
+            <!-- Difficulty + Length row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="4dp"
+                android:gravity="center_vertical">
+
+                <!-- Difficulty badge pill -->
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/textHikeDifficulty"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    android:textColor="?attr/colorOnSecondaryContainer"
+                    android:background="@drawable/bg_difficulty_badge"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="2dp"
+                    android:layout_marginEnd="8dp"
+                    tools:text="Hard" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/textHikeLength"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceLabelMedium"
+                    android:textColor="?attr/colorPrimary"
+                    tools:text="14.5 km" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Delete icon button (48dp touch target) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonDeleteHike"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            app:icon="@drawable/ic_delete"
+            app:iconTint="@color/md_error"
+            android:contentDescription="@string/action_delete"
+            android:layout_marginStart="4dp" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

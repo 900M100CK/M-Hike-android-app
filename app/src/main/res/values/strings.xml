@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">M-Hike</string>
+
+    <!-- Screen titles -->
+    <string name="title_add_hike">Add Hike</string>
+    <string name="title_edit_hike">Edit Hike</string>
+    <string name="title_hike_detail">Hike Details</string>
+    <string name="title_add_observation">Add Observation</string>
+    <string name="title_edit_observation">Edit Observation</string>
+    <string name="title_search_filter">Search &amp; Filter</string>
+
+    <!-- Field labels -->
+    <string name="label_required_fields">Required Information</string>
+    <string name="label_optional_fields">Optional Information</string>
+    <string name="label_parking">Parking Available?</string>
+    <string name="label_parking_yes">Yes</string>
+    <string name="label_parking_no">No</string>
+    <string name="label_difficulty">Difficulty Level</string>
+    <string name="label_observations">Observations</string>
+    <string name="label_filter_results">%d results found</string>
+
+    <!-- Field hints -->
+    <string name="hint_hike_name">Hike Name *</string>
+    <string name="hint_location">Location *</string>
+    <string name="hint_date">Date (YYYY-MM-DD) *</string>
+    <string name="hint_length">Length *</string>
+    <string name="hint_description">Description (optional)</string>
+    <string name="hint_custom_field_1">Additional Note 1 (optional)</string>
+    <string name="hint_custom_field_2">Additional Note 2 (optional)</string>
+    <string name="hint_obs_title">Observation Title *</string>
+    <string name="hint_obs_time">Time (HH:mm) *</string>
+    <string name="hint_obs_comment">Comment (optional)</string>
+    <string name="hint_search_hike_name">Search by hike name…</string>
+    <string name="hint_filter_location">Filter by location…</string>
+    <string name="hint_date_from">From (YYYY-MM-DD)</string>
+    <string name="hint_date_to">To (YYYY-MM-DD)</string>
+    <string name="hint_min_length">Min length</string>
+    <string name="hint_max_length">Max length</string>
+
+    <!-- Suffixes / prefixes -->
+    <string name="suffix_km">km</string>
+
+    <!-- Action buttons -->
+    <string name="action_add_hike">Add Hike</string>
+    <string name="action_edit_hike">Edit Hike</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_delete_all">Delete All</string>
+    <string name="action_preview_save">Preview &amp; Save</string>
+    <string name="action_save">Save</string>
+    <string name="action_update">Update</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_filter">Filter</string>
+    <string name="action_apply_filter">Apply Filter</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_add_observation">Add Observation</string>
+
+    <!-- Dialog titles and messages -->
+    <string name="dialog_summary_title">Confirm Hike Details</string>
+    <string name="dialog_delete_all_title">Delete All Hikes?</string>
+    <string name="dialog_delete_all_message">This will permanently delete all hikes and their observations. This action cannot be undone.</string>
+    <string name="dialog_delete_hike_title">Delete Hike?</string>
+    <string name="dialog_delete_hike_message">Delete \"%s\" and all its observations? This cannot be undone.</string>
+    <string name="dialog_delete_obs_title">Delete Observation?</string>
+    <string name="dialog_delete_obs_message">Delete \"%s\"? This cannot be undone.</string>
+
+    <!-- Status messages -->
+    <string name="msg_hike_saved">Hike saved successfully!</string>
+    <string name="msg_observation_saved">Observation saved!</string>
+    <string name="msg_no_hikes">No hikes yet. Tap + to add your first hike!</string>
+    <string name="msg_no_observations">No observations recorded for this hike.</string>
+    <string name="msg_no_filter_results">No hikes match your filter criteria.</string>
+    <string name="msg_delete_from_list">Please delete hikes from the main list.</string>
+
+    <!-- Error messages -->
+    <string name="error_hike_not_found">Hike not found. It may have been deleted.</string>
+    <string name="error_invalid_hike">Invalid hike reference.</string>
+    <string name="error_observation_not_found">Observation not found.</string>
+    <string name="error_date_format">Use YYYY-MM-DD format</string>
+</resources>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  bg_difficulty_badge.xml
+  Rounded rectangle background for the difficulty text badge in item_hike.xml.
+  Uses md_secondary_container colour (#D9E7CB) hardcoded to avoid theme attr issues.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#D9E7CB" />
+    <corners android:radius="12dp" />
+</shape>

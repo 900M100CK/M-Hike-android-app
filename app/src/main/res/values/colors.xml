@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- M-Hike Material Design 3 Colour Palette -->
+    <!-- Primary: Deep Forest Green -->
+    <color name="md_primary">#386A1F</color>
+    <color name="md_on_primary">#FFFFFF</color>
+    <color name="md_primary_container">#B7F397</color>
+    <color name="md_on_primary_container">#042100</color>
+
+    <!-- Secondary: Earthy Sage -->
+    <color name="md_secondary">#55624C</color>
+    <color name="md_on_secondary">#FFFFFF</color>
+    <color name="md_secondary_container">#D9E7CB</color>
+    <color name="md_on_secondary_container">#131F0D</color>
+
+    <!-- Tertiary: Trail Brown -->
+    <color name="md_tertiary">#386666</color>
+    <color name="md_on_tertiary">#FFFFFF</color>
+    <color name="md_tertiary_container">#BCEBEB</color>
+    <color name="md_on_tertiary_container">#002020</color>
+
+    <!-- Error -->
+    <color name="md_error">#BA1A1A</color>
+    <color name="md_on_error">#FFFFFF</color>
+    <color name="md_error_container">#FFDAD6</color>
+    <color name="md_on_error_container">#410002</color>
+
+    <!-- Surface -->
+    <color name="md_background">#F7FBF0</color>
+    <color name="md_on_background">#1A1C18</color>
+    <color name="md_surface">#F7FBF0</color>
+    <color name="md_on_surface">#1A1C18</color>
+    <color name="md_surface_variant">#DFE4D7</color>
+    <color name="md_on_surface_variant">#43483D</color>
+    <color name="md_outline">#73796D</color>
+
+    <!-- Dark theme counterparts -->
+    <color name="md_primary_dark">#9CD67D</color>
+    <color name="md_on_primary_dark">#0D3900</color>
+    <color name="md_primary_container_dark">#21510A</color>
+    <color name="md_on_primary_container_dark">#B7F397</color>
+    <color name="md_secondary_dark">#BDCBB0</color>
+    <color name="md_on_secondary_dark">#283421</color>
+    <color name="md_background_dark">#1A1C18</color>
+    <color name="md_on_background_dark">#E2E3DA</color>
+    <color name="md_surface_dark">#1A1C18</color>
+    <color name="md_on_surface_dark">#E2E3DA</color>
+    <color name="md_surface_variant_dark">#43483D</color>
+    <color name="md_on_surface_variant_dark">#C3C8BC</color>
+    <color name="md_error_dark">#FFB4AB</color>
+    <color name="md_on_error_dark">#690005</color>
+</resources>
