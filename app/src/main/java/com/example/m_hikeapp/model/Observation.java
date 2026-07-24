@@ -1,34 +1,72 @@
 package com.example.m_hikeapp.model;
 
+import androidx.room.ColumnInfo;
+import androidx.room.Entity;
+import androidx.room.ForeignKey;
+import androidx.room.Index;
+import androidx.room.PrimaryKey;
+
 /**
- * POJO representing a single observation linked to a {@link Hike}.
+ * Room {@link Entity} representing a single observation linked to a {@link Hike}.
  *
- * <p>Maps 1-to-1 with the {@code observations} table defined in
- * {@link com.example.m_hikeapp.database.DatabaseHelper}.</p>
+ * <h3>Foreign Key</h3>
+ * <p>The {@code @ForeignKey} annotation tells Room to add a proper SQL foreign
+ * key constraint linking {@code hike_id} → {@code hikes.id} with
+ * {@code ON DELETE CASCADE}.  When a parent hike is deleted, Room
+ * automatically deletes all its observations.</p>
+ *
+ * <h3>Index</h3>
+ * <p>The {@code @Index} on {@code hike_id} is required by Room whenever a
+ * foreign key column exists — without it Room emits a build warning and
+ * queries that filter by {@code hike_id} would do a full table scan.</p>
  */
+@Entity(
+    tableName = "observations",
+    foreignKeys = @ForeignKey(
+        entity    = Hike.class,
+        parentColumns = "id",
+        childColumns  = "hike_id",
+        onDelete  = ForeignKey.CASCADE   // auto-delete observations when hike is deleted
+    ),
+    indices = { @Index("hike_id") }      // index required for FK + faster lookups
+)
 public class Observation {
 
     // -------------------------------------------------------------------------
-    // Fields
+    // Columns
     // -------------------------------------------------------------------------
-    private long   id;
-    private long   hikeId;    // FK -> hikes.id
+
+    @PrimaryKey(autoGenerate = true)
+    @ColumnInfo(name = "id")
+    private long id;
+
+    /** Foreign key → {@link Hike#getId()}. */
+    @ColumnInfo(name = "hike_id")
+    private long hikeId;
+
+    @ColumnInfo(name = "title")
     private String title;
-    private String obsTime;   // "HH:mm"
-    private String comment;   // optional
+
+    /** Observation time stored as "HH:mm". */
+    @ColumnInfo(name = "obs_time")
+    private String obsTime;
+
+    /** Optional additional comment. May be {@code null}. */
+    @ColumnInfo(name = "comment")
+    private String comment;
 
     // -------------------------------------------------------------------------
     // Constructors
     // -------------------------------------------------------------------------
 
-    /** Default no-arg constructor. */
+    /** Required no-arg constructor for Room. */
     public Observation() {}
 
     /**
      * Convenience constructor for mandatory fields.
      *
-     * @param hikeId  The parent hike's database ID.
-     * @param title   Short descriptive title (required).
+     * @param hikeId  Parent hike's database ID.
+     * @param title   Short title (required).
      * @param obsTime Time string "HH:mm" (required).
      */
     public Observation(long hikeId, String title, String obsTime) {
@@ -41,27 +79,20 @@ public class Observation {
     // Getters & Setters
     // -------------------------------------------------------------------------
 
-    /** @return Database primary key; 0 indicates unsaved. */
-    public long getId() { return id; }
-    public void setId(long id) { this.id = id; }
+    public long getId()                  { return id; }
+    public void setId(long id)           { this.id = id; }
 
-    /** @return Foreign key pointing to the parent {@link Hike}. */
-    public long getHikeId() { return hikeId; }
-    public void setHikeId(long hikeId) { this.hikeId = hikeId; }
+    public long getHikeId()              { return hikeId; }
+    public void setHikeId(long hikeId)   { this.hikeId = hikeId; }
 
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
+    public String getTitle()             { return title; }
+    public void setTitle(String title)   { this.title = title; }
 
-    /** @return Time string in "HH:mm" format. */
-    public String getObsTime() { return obsTime; }
-    public void setObsTime(String obsTime) { this.obsTime = obsTime; }
+    public String getObsTime()           { return obsTime; }
+    public void setObsTime(String t)     { this.obsTime = t; }
 
-    public String getComment() { return comment; }
-    public void setComment(String comment) { this.comment = comment; }
-
-    // -------------------------------------------------------------------------
-    // Utility
-    // -------------------------------------------------------------------------
+    public String getComment()           { return comment; }
+    public void setComment(String c)     { this.comment = c; }
 
     @Override
     public String toString() {

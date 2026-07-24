@@ -4,12 +4,16 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
+import androidx.sqlite.db.SimpleSQLiteQuery;
+import androidx.sqlite.db.SupportSQLiteQuery;
+
 import com.example.m_hikeapp.dao.HikeDao;
 import com.example.m_hikeapp.dao.ObservationDao;
-import com.example.m_hikeapp.database.DatabaseHelper;
+import com.example.m_hikeapp.database.AppDatabase;
 import com.example.m_hikeapp.model.Hike;
 import com.example.m_hikeapp.model.Observation;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,169 +21,186 @@ import java.util.concurrent.Executors;
 /**
  * Single source of truth for all hike and observation data.
  *
- * <p>The repository pattern separates business / orchestration logic from both
- * the UI layer (Activities) and the raw data layer (DAOs). Activities should
- * never call DAO methods directly.</p>
+ * <h3>Architecture role</h3>
+ * <p>Activities never touch the DAO or {@link AppDatabase} directly.  They
+ * call repository methods and receive results via typed callback interfaces
+ * on the <strong>main thread</strong>, safe for UI updates.</p>
  *
  * <h3>Threading model</h3>
  * <ul>
- *   <li>Every database operation is dispatched to a dedicated background
- *       {@link ExecutorService} thread pool to avoid blocking the main
- *       (UI) thread and causing ANR errors.</li>
- *   <li>Results are posted back to the main thread via a {@link Handler}
- *       wrapping {@link Looper#getMainLooper()} so that callers can safely
- *       update UI in their callback implementations.</li>
+ *   <li>Every DAO call is dispatched to a single-threaded
+ *       {@link ExecutorService}.  Serialised execution avoids DB write
+ *       conflicts without explicit locking.</li>
+ *   <li>Results are posted back to the main thread via
+ *       {@code Handler(mainLooper)} — <strong>no ANR risk</strong>.</li>
+ *   <li>{@code .allowMainThreadQueries()} is intentionally omitted from
+ *       {@link AppDatabase} — this repository is the enforced gateway.</li>
  * </ul>
  *
- * <h3>Callback pattern</h3>
- * <p>Each async method accepts a functional-style callback interface defined
- * as an inner {@code interface} here.  Activities implement these inline (lambda
- * or anonymous class) which keeps them free from threading concerns.</p>
+ * <h3>Dynamic filter query</h3>
+ * <p>The multi-criteria {@link #filterHikes} method builds a parameterised
+ * {@link SimpleSQLiteQuery} at runtime and passes it to the
+ * {@code @RawQuery} DAO method.  {@link SimpleSQLiteQuery} binds all user
+ * values as positional arguments — safe from SQL injection.</p>
  */
 public class HikeRepository {
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Callback interfaces
-    // -------------------------------------------------------------------------
+    // =========================================================================
 
-    /** Delivers a single {@link Hike} result. */
+    /** Delivers a single {@link Hike} result on the main thread. */
     public interface HikeCallback {
-        /**
-         * @param hike Result object, or {@code null} if the operation failed /
-         *             produced no result.
-         */
         void onResult(Hike hike);
     }
 
-    /** Delivers a list of {@link Hike} objects. */
+    /** Delivers a list of {@link Hike} objects on the main thread. */
     public interface HikeListCallback {
-        /** @param hikes Result list; never {@code null}, may be empty. */
         void onResult(List<Hike> hikes);
     }
 
-    /** Delivers a list of {@link Observation} objects. */
+    /** Delivers a list of {@link Observation} objects on the main thread. */
     public interface ObservationListCallback {
-        /** @param observations Result list; never {@code null}, may be empty. */
         void onResult(List<Observation> observations);
     }
 
-    /** Delivers a simple success/failure signal plus an optional message. */
+    /**
+     * Delivers a simple success/failure signal with a human-readable message.
+     *
+     * <p>On success, {@code message} may carry extra data (e.g. the new row ID
+     * as a string). On failure it contains a user-facing error description.</p>
+     */
     public interface OperationCallback {
-        /**
-         * @param success {@code true} if the operation completed without error.
-         * @param message Human-readable status message (or error description).
-         */
         void onResult(boolean success, String message);
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Singleton
-    // -------------------------------------------------------------------------
+    // =========================================================================
+
     private static HikeRepository instance;
 
-    /**
-     * Returns the application-scoped singleton repository.
-     *
-     * @param context Any context; internally uses {@link Context#getApplicationContext()}.
-     */
+    /** Returns the application-scoped singleton repository. */
     public static synchronized HikeRepository getInstance(Context context) {
         if (instance == null) {
-            DatabaseHelper dbHelper = DatabaseHelper.getInstance(context.getApplicationContext());
-            instance = new HikeRepository(new HikeDao(dbHelper), new ObservationDao(dbHelper));
+            AppDatabase db = AppDatabase.getInstance(context.getApplicationContext());
+            instance = new HikeRepository(db.hikeDao(), db.observationDao());
         }
         return instance;
     }
 
-    // -------------------------------------------------------------------------
+    // =========================================================================
     // Fields
-    // -------------------------------------------------------------------------
-    private final HikeDao          hikeDao;
-    private final ObservationDao   observationDao;
+    // =========================================================================
+
+    private final HikeDao        hikeDao;
+    private final ObservationDao observationDao;
 
     /**
-     * Fixed-size thread pool: single thread ensures DB writes are serialised
-     * without the overhead of a full thread manager.
+     * Single background thread — serialises all DB writes, preventing
+     * concurrent write conflicts without manual synchronisation.
      */
-    private final ExecutorService  executor    = Executors.newSingleThreadExecutor();
-    private final Handler          mainHandler = new Handler(Looper.getMainLooper());
+    private final ExecutorService executor    = Executors.newSingleThreadExecutor();
+    private final Handler         mainHandler = new Handler(Looper.getMainLooper());
 
-    /** Visible for testing – prefer the singleton factory in production. */
+    /** Package-visible for testing; use {@link #getInstance} in production. */
     HikeRepository(HikeDao hikeDao, ObservationDao observationDao) {
         this.hikeDao        = hikeDao;
         this.observationDao = observationDao;
     }
 
     // =========================================================================
-    // Hike operations
+    // Hike — write operations
     // =========================================================================
 
     /**
      * Asynchronously inserts a new hike.
      *
-     * @param hike     Validated hike to persist.
-     * @param callback Receives {@code success=true} and the new row-ID as the
-     *                 message string, or {@code success=false} with an error.
+     * @param hike     Validated, fully-populated hike to persist.
+     * @param callback {@code success=true} and new row ID as message string,
+     *                 or {@code success=false} with an error description.
      */
     public void addHike(Hike hike, OperationCallback callback) {
         executor.execute(() -> {
-            long newId = hikeDao.insert(hike);
-            boolean success = newId != -1;
-            String message  = success
-                    ? String.valueOf(newId)
-                    : "Failed to save hike. Please try again.";
-            postToMain(() -> callback.onResult(success, message));
+            try {
+                long newId   = hikeDao.insert(hike);
+                postToMain(() -> callback.onResult(true, String.valueOf(newId)));
+            } catch (Exception e) {
+                postToMain(() -> callback.onResult(false,
+                        "Failed to save hike. Please try again."));
+            }
         });
     }
 
     /**
      * Asynchronously updates an existing hike.
      *
-     * @param hike     Hike with updated values (must have a valid {@code id}).
-     * @param callback Receives success flag and a status message.
+     * @param hike     Hike with updated values ({@code id} must be valid).
+     * @param callback Success flag and status message.
      */
     public void updateHike(Hike hike, OperationCallback callback) {
         executor.execute(() -> {
-            int rows     = hikeDao.update(hike);
-            boolean success = rows > 0;
-            String message  = success
-                    ? "Hike updated successfully."
-                    : "Failed to update hike. It may have been deleted.";
-            postToMain(() -> callback.onResult(success, message));
+            try {
+                int rows = hikeDao.update(hike);
+                boolean ok = rows > 0;
+                postToMain(() -> callback.onResult(ok,
+                        ok ? "Hike updated successfully."
+                           : "Failed to update hike. It may have been deleted."));
+            } catch (Exception e) {
+                postToMain(() -> callback.onResult(false, "Database error while updating hike."));
+            }
         });
     }
 
     /**
-     * Asynchronously deletes a hike (and its observations via cascade).
+     * Asynchronously deletes a hike (and its observations via Room's FK cascade).
+     *
+     * <p>Room's {@code @Delete} needs the entity object, so we first fetch it
+     * by ID on the background thread before deleting.</p>
      *
      * @param hikeId   Primary key of the hike to remove.
-     * @param callback Receives success flag and a status message.
+     * @param callback Success flag and status message.
      */
     public void deleteHike(long hikeId, OperationCallback callback) {
         executor.execute(() -> {
-            int rows     = hikeDao.delete(hikeId);
-            boolean success = rows > 0;
-            String message  = success
-                    ? "Hike deleted."
-                    : "Failed to delete hike.";
-            postToMain(() -> callback.onResult(success, message));
+            try {
+                Hike hike = hikeDao.getById(hikeId);
+                if (hike == null) {
+                    postToMain(() -> callback.onResult(false, "Hike not found."));
+                    return;
+                }
+                int rows = hikeDao.delete(hike);
+                boolean ok = rows > 0;
+                postToMain(() -> callback.onResult(ok,
+                        ok ? "Hike deleted." : "Failed to delete hike."));
+            } catch (Exception e) {
+                postToMain(() -> callback.onResult(false, "Database error while deleting hike."));
+            }
         });
     }
 
     /**
-     * Asynchronously deletes all hikes and their associated observations.
+     * Asynchronously deletes every hike (and all observations via cascade).
      *
-     * @param callback Receives success flag and the number of deleted hikes.
+     * @param callback Success flag and a count of deleted rows.
      */
     public void deleteAllHikes(OperationCallback callback) {
         executor.execute(() -> {
-            int rows    = hikeDao.deleteAll();
-            String msg  = rows + " hike(s) deleted.";
-            postToMain(() -> callback.onResult(true, msg));
+            try {
+                int rows = hikeDao.deleteAll();
+                postToMain(() -> callback.onResult(true, rows + " hike(s) deleted."));
+            } catch (Exception e) {
+                postToMain(() -> callback.onResult(false, "Failed to delete all hikes."));
+            }
         });
     }
 
+    // =========================================================================
+    // Hike — read operations
+    // =========================================================================
+
     /**
-     * Asynchronously retrieves all hikes.
+     * Asynchronously retrieves all hikes, newest first.
      *
      * @param callback Delivers the result list on the main thread.
      */
@@ -191,7 +212,7 @@ public class HikeRepository {
     }
 
     /**
-     * Asynchronously retrieves a single hike by its ID.
+     * Asynchronously retrieves a single hike by ID.
      *
      * @param hikeId   Database primary key.
      * @param callback Delivers the hike (or {@code null}) on the main thread.
@@ -204,18 +225,19 @@ public class HikeRepository {
     }
 
     // =========================================================================
-    // Search & filter
+    // Hike — search & filter
     // =========================================================================
 
     /**
-     * Asynchronously searches hikes by name substring.
+     * Asynchronously searches hikes by name substring (case-insensitive).
      *
-     * @param query    Search string (case-insensitive).
+     * @param query    The search term (wildcards added internally).
      * @param callback Delivers matching hikes on the main thread.
      */
     public void searchHikesByName(String query, HikeListCallback callback) {
         executor.execute(() -> {
-            List<Hike> hikes = hikeDao.searchByName(query);
+            // Wrap in % wildcards for LIKE matching; Room validates the query at compile time.
+            List<Hike> hikes = hikeDao.searchByName("%" + query + "%");
             postToMain(() -> callback.onResult(hikes));
         });
     }
@@ -223,11 +245,16 @@ public class HikeRepository {
     /**
      * Asynchronously filters hikes by multiple optional criteria.
      *
-     * @param location    Substring match against location field; {@code null} to skip.
-     * @param dateFrom    Start date "YYYY-MM-DD"; {@code null} to skip.
-     * @param dateTo      End date "YYYY-MM-DD"; {@code null} to skip.
-     * @param minLengthKm Minimum length; {@code null} to skip.
-     * @param maxLengthKm Maximum length; {@code null} to skip.
+     * <p>All parameters are optional — pass {@code null} to skip a criterion.
+     * Active criteria are combined with AND.  The filter is built as a
+     * {@link SimpleSQLiteQuery} with positional bound arguments, preventing
+     * SQL injection even though the query is constructed dynamically.</p>
+     *
+     * @param location    Substring match against {@code location} (case-insensitive).
+     * @param dateFrom    Start date "YYYY-MM-DD" (inclusive), or {@code null}.
+     * @param dateTo      End date "YYYY-MM-DD" (inclusive), or {@code null}.
+     * @param minLengthKm Minimum length in km, or {@code null}.
+     * @param maxLengthKm Maximum length in km, or {@code null}.
      * @param callback    Delivers filtered hikes on the main thread.
      */
     public void filterHikes(String location,
@@ -237,59 +264,120 @@ public class HikeRepository {
                              Double maxLengthKm,
                              HikeListCallback callback) {
         executor.execute(() -> {
-            List<Hike> hikes = hikeDao.filterHikes(location, dateFrom, dateTo, minLengthKm, maxLengthKm);
+            SupportSQLiteQuery query = buildFilterQuery(location, dateFrom, dateTo,
+                                                        minLengthKm, maxLengthKm);
+            List<Hike> hikes = hikeDao.filterHikes(query);
             postToMain(() -> callback.onResult(hikes));
         });
     }
 
+    /**
+     * Builds a parameterised {@link SimpleSQLiteQuery} for the multi-criteria filter.
+     *
+     * <p>Each active criterion appends a WHERE clause fragment and a bound
+     * argument. Using {@link SimpleSQLiteQuery} ensures all values are passed
+     * as SQL parameters, not interpolated into the string.</p>
+     */
+    private SupportSQLiteQuery buildFilterQuery(String location,
+                                                String dateFrom,
+                                                String dateTo,
+                                                Double minLengthKm,
+                                                Double maxLengthKm) {
+        StringBuilder sql  = new StringBuilder("SELECT * FROM hikes WHERE 1=1");
+        List<Object>  args = new ArrayList<>();
+
+        if (location != null && !location.trim().isEmpty()) {
+            sql.append(" AND LOWER(location) LIKE LOWER(?)");
+            args.add("%" + location.trim() + "%");
+        }
+        if (dateFrom != null && !dateFrom.isEmpty()) {
+            sql.append(" AND date >= ?");
+            args.add(dateFrom);
+        }
+        if (dateTo != null && !dateTo.isEmpty()) {
+            sql.append(" AND date <= ?");
+            args.add(dateTo);
+        }
+        if (minLengthKm != null) {
+            sql.append(" AND length_km >= ?");
+            args.add(minLengthKm);
+        }
+        if (maxLengthKm != null) {
+            sql.append(" AND length_km <= ?");
+            args.add(maxLengthKm);
+        }
+        sql.append(" ORDER BY date DESC");
+
+        return new SimpleSQLiteQuery(sql.toString(), args.toArray());
+    }
+
     // =========================================================================
-    // Observation operations
+    // Observation — write operations
     // =========================================================================
 
     /**
-     * Asynchronously adds a new observation to a hike.
+     * Asynchronously adds a new observation.
      *
      * @param observation Validated observation to persist.
-     * @param callback    Receives success flag and a status message.
+     * @param callback    Success flag and new row ID (or error message).
      */
     public void addObservation(Observation observation, OperationCallback callback) {
         executor.execute(() -> {
-            long newId  = observationDao.insert(observation);
-            boolean ok  = newId != -1;
-            String msg  = ok ? String.valueOf(newId) : "Failed to save observation. Please try again.";
-            postToMain(() -> callback.onResult(ok, msg));
+            try {
+                long newId = observationDao.insert(observation);
+                postToMain(() -> callback.onResult(true, String.valueOf(newId)));
+            } catch (Exception e) {
+                postToMain(() -> callback.onResult(false, "Failed to save observation. Please try again."));
+            }
         });
     }
 
     /**
      * Asynchronously updates an existing observation.
      *
-     * @param observation Updated observation (must have a valid {@code id}).
-     * @param callback    Receives success flag and a status message.
+     * @param observation Updated observation ({@code id} must be valid).
+     * @param callback    Success flag and status message.
      */
     public void updateObservation(Observation observation, OperationCallback callback) {
         executor.execute(() -> {
-            int rows    = observationDao.update(observation);
-            boolean ok  = rows > 0;
-            String msg  = ok ? "Observation updated." : "Failed to update observation.";
-            postToMain(() -> callback.onResult(ok, msg));
+            try {
+                int rows = observationDao.update(observation);
+                boolean ok = rows > 0;
+                postToMain(() -> callback.onResult(ok,
+                        ok ? "Observation updated." : "Failed to update observation."));
+            } catch (Exception e) {
+                postToMain(() -> callback.onResult(false, "Database error while updating observation."));
+            }
         });
     }
 
     /**
      * Asynchronously deletes an observation.
      *
-     * @param observationId Primary key of the observation.
-     * @param callback      Receives success flag and a status message.
+     * @param observationId Primary key of the observation to remove.
+     * @param callback      Success flag and status message.
      */
     public void deleteObservation(long observationId, OperationCallback callback) {
         executor.execute(() -> {
-            int rows    = observationDao.delete(observationId);
-            boolean ok  = rows > 0;
-            String msg  = ok ? "Observation deleted." : "Failed to delete observation.";
-            postToMain(() -> callback.onResult(ok, msg));
+            try {
+                Observation obs = observationDao.getById(observationId);
+                if (obs == null) {
+                    postToMain(() -> callback.onResult(false, "Observation not found."));
+                    return;
+                }
+                int rows = observationDao.delete(obs);
+                boolean ok = rows > 0;
+                postToMain(() -> callback.onResult(ok,
+                        ok ? "Observation deleted." : "Failed to delete observation."));
+            } catch (Exception e) {
+                postToMain(() -> callback.onResult(false, "Database error while deleting observation."));
+            }
         });
     }
+
+    // =========================================================================
+    // Observation — read operations
+    // =========================================================================
 
     /**
      * Asynchronously retrieves all observations for a given hike.
@@ -308,10 +396,7 @@ public class HikeRepository {
     // Private helpers
     // =========================================================================
 
-    /**
-     * Posts a {@link Runnable} to the main (UI) thread.
-     * This ensures all callback invocations are safe for UI operations.
-     */
+    /** Posts a {@link Runnable} to the main (UI) thread for safe UI updates. */
     private void postToMain(Runnable runnable) {
         mainHandler.post(runnable);
     }
