@@ -31,7 +31,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    // Enable ViewBinding – generates binding classes for all XML layouts.
     buildFeatures {
         viewBinding = true
     }
@@ -43,6 +42,15 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(libs.material)
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+
+    // ── Room Database ──────────────────────────────────────────────────────────
+    // room-runtime  : core Room library (Entity, Dao, Database annotations)
+    // room-compiler : annotation processor — generates DAO implementations and
+    //                 validates all @Query SQL strings at COMPILE TIME.
+    implementation(libs.room.runtime)
+    implementation(libs.room.common)
+    annotationProcessor(libs.room.compiler)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(libs.ext.junit)

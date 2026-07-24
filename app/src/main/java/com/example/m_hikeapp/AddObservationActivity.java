@@ -120,28 +120,24 @@ public class AddObservationActivity extends AppCompatActivity {
     // -------------------------------------------------------------------------
 
     private void loadObservationForEditing(long observationId) {
-        // ObservationDao.getById is not exposed on the repository; we work around by
-        // loading all observations for this hike and finding the one we need.
-        // A production app would expose a direct getById on the repository.
         binding.buttonSaveObservation.setEnabled(false);
-        // Direct DAO access via inner executor (kept simple for coursework scope):
-        new Thread(() -> {
-            com.example.m_hikeapp.database.DatabaseHelper db =
-                    com.example.m_hikeapp.database.DatabaseHelper.getInstance(this);
-            com.example.m_hikeapp.dao.ObservationDao dao =
-                    new com.example.m_hikeapp.dao.ObservationDao(db);
-            Observation obs = dao.getById(observationId);
-            runOnUiThread(() -> {
-                binding.buttonSaveObservation.setEnabled(true);
-                if (obs == null) {
-                    Toast.makeText(this, R.string.error_observation_not_found, Toast.LENGTH_SHORT).show();
-                    finish();
-                    return;
+        repository.getObservationsForHike(hikeId, observations -> {
+            binding.buttonSaveObservation.setEnabled(true);
+            Observation found = null;
+            for (Observation obs : observations) {
+                if (obs.getId() == observationId) {
+                    found = obs;
+                    break;
                 }
-                existingObservation = obs;
-                populateForm(obs);
-            });
-        }).start();
+            }
+            if (found == null) {
+                Toast.makeText(this, R.string.error_observation_not_found, Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
+            existingObservation = found;
+            populateForm(found);
+        });
     }
 
     private void populateForm(Observation obs) {

@@ -72,21 +72,28 @@
                 android:layout_marginBottom="8dp"
                 android:gravity="end">
 
+                <!-- Nút Filter: Outlined Button chuẩn M3 -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonFilter"
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="48dp"
                     android:text="@string/action_filter"
+                    android:textColor="@color/md_primary"
                     android:layout_marginEnd="8dp"
-                    app:icon="@drawable/ic_filter" />
+                    app:icon="@drawable/ic_filter"
+                    app:iconTint="@color/md_primary"
+                    app:strokeColor="@color/md_outline" />
 
+                <!-- Nút Delete All: Outlined Error Button chuẩn M3 -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonDeleteAll"
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="48dp"
                     android:text="@string/action_delete_all"
+                    android:textColor="@color/md_error"
+                    app:icon="@drawable/ic_delete"
                     app:iconTint="@color/md_error"
                     app:strokeColor="@color/md_error" />
 

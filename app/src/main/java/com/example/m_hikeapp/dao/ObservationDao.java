@@ -1,214 +1,95 @@
 package com.example.m_hikeapp.dao;
 
-import android.content.ContentValues;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteException;
-import android.util.Log;
+import androidx.room.Dao;
+import androidx.room.Delete;
+import androidx.room.Insert;
+import androidx.room.OnConflictStrategy;
+import androidx.room.Query;
+import androidx.room.Update;
 
-import com.example.m_hikeapp.database.DatabaseHelper;
 import com.example.m_hikeapp.model.Observation;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Data Access Object for the {@code observations} table.
+ * Room Data Access Object for the {@code observations} table.
  *
- * <p>Observations are always scoped to a parent hike. Deletion of a hike
- * automatically cascades to its observations via the FK constraint defined in
- * {@link DatabaseHelper}. This DAO only needs to handle direct observation
- * CRUD operations.</p>
+ * <p>Room generates the concrete implementation at compile time.  All
+ * {@code @Query} strings are validated against the live schema — a typo
+ * produces a <strong>build error</strong>, not a crash in production.</p>
  *
- * <p><strong>Threading:</strong> All methods must be called from a background
- * thread; the {@link com.example.m_hikeapp.repository.HikeRepository}
- * provides the async wrapper.</p>
+ * <h3>Cascade delete</h3>
+ * <p>Deleting a parent {@link com.example.m_hikeapp.model.Hike} automatically
+ * removes all its observations because of the {@code ON DELETE CASCADE} foreign
+ * key declared on the {@link com.example.m_hikeapp.model.Observation} entity.
+ * The {@link #deleteAllForHike(long)} method is provided for the rare case
+ * where you want to clear observations without deleting the hike.</p>
  */
-public class ObservationDao {
-
-    private static final String TAG = "ObservationDao";
-
-    // -------------------------------------------------------------------------
-    // Dependencies
-    // -------------------------------------------------------------------------
-    private final DatabaseHelper dbHelper;
-
-    /**
-     * @param dbHelper The singleton {@link DatabaseHelper}.
-     */
-    public ObservationDao(DatabaseHelper dbHelper) {
-        this.dbHelper = dbHelper;
-    }
+@Dao
+public interface ObservationDao {
 
     // =========================================================================
-    // CRUD operations
+    // Write operations
     // =========================================================================
 
     /**
      * Inserts a new observation.
      *
-     * @param observation Observation to persist. Its {@code id} is ignored.
-     * @return The new row ID, or {@code -1} on failure.
+     * @param observation Observation to persist. Its {@code id} is auto-generated.
+     * @return The new row ID.
      */
-    public long insert(Observation observation) {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-        try {
-            ContentValues cv = toContentValues(observation);
-            long newId = db.insertOrThrow(DatabaseHelper.TABLE_OBSERVATIONS, null, cv);
-            Log.d(TAG, "Inserted observation id=" + newId + " for hike=" + observation.getHikeId());
-            return newId;
-        } catch (SQLiteException e) {
-            Log.e(TAG, "Failed to insert observation: " + observation, e);
-            return -1;
-        }
-    }
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    long insert(Observation observation);
 
     /**
      * Updates an existing observation.
      *
-     * @param observation Observation with updated values. Its {@code id} must be set.
-     * @return Number of rows affected (1 on success).
+     * @param observation Updated observation (must have a valid {@code id}).
+     * @return Number of rows updated.
      */
-    public int update(Observation observation) {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-        try {
-            ContentValues cv = toContentValues(observation);
-            int rows = db.update(
-                    DatabaseHelper.TABLE_OBSERVATIONS,
-                    cv,
-                    DatabaseHelper.COL_OBS_ID + " = ?",
-                    new String[]{String.valueOf(observation.getId())}
-            );
-            Log.d(TAG, "Updated " + rows + " observation(s), id=" + observation.getId());
-            return rows;
-        } catch (SQLiteException e) {
-            Log.e(TAG, "Failed to update observation id=" + observation.getId(), e);
-            return 0;
-        }
-    }
+    @Update
+    int update(Observation observation);
 
     /**
-     * Deletes a single observation.
+     * Deletes a specific observation.
      *
-     * @param observationId Primary key of the observation to remove.
+     * @param observation The observation to remove (matched by {@code id}).
      * @return Number of rows deleted.
      */
-    public int delete(long observationId) {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-        try {
-            int rows = db.delete(
-                    DatabaseHelper.TABLE_OBSERVATIONS,
-                    DatabaseHelper.COL_OBS_ID + " = ?",
-                    new String[]{String.valueOf(observationId)}
-            );
-            Log.d(TAG, "Deleted " + rows + " observation(s) with id=" + observationId);
-            return rows;
-        } catch (SQLiteException e) {
-            Log.e(TAG, "Failed to delete observation id=" + observationId, e);
-            return 0;
-        }
-    }
+    @Delete
+    int delete(Observation observation);
 
     /**
-     * Deletes all observations belonging to a specific hike.
+     * Deletes all observations for a given hike without deleting the hike itself.
      *
-     * <p>Note: This is normally handled automatically by the ON DELETE CASCADE FK
-     * rule when the parent hike is deleted. Call this explicitly only when you
-     * need to clear observations without deleting the hike itself.</p>
+     * <p>This is only needed when clearing observations while keeping the parent
+     * hike.  Normal hike deletion triggers cascade automatically.</p>
      *
-     * @param hikeId The parent hike ID whose observations should be removed.
+     * @param hikeId The parent hike's primary key.
      * @return Number of rows deleted.
      */
-    public int deleteAllForHike(long hikeId) {
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-        try {
-            int rows = db.delete(
-                    DatabaseHelper.TABLE_OBSERVATIONS,
-                    DatabaseHelper.COL_OBS_HIKE_ID + " = ?",
-                    new String[]{String.valueOf(hikeId)}
-            );
-            Log.d(TAG, "Deleted " + rows + " observations for hike id=" + hikeId);
-            return rows;
-        } catch (SQLiteException e) {
-            Log.e(TAG, "Failed to delete observations for hike id=" + hikeId, e);
-            return 0;
-        }
-    }
+    @Query("DELETE FROM observations WHERE hike_id = :hikeId")
+    int deleteAllForHike(long hikeId);
 
     // =========================================================================
-    // Query operations
+    // Read operations
     // =========================================================================
 
     /**
-     * Returns all observations associated with the given hike, ordered by time.
+     * Returns all observations for a given hike, ordered by time ascending.
      *
-     * @param hikeId Parent hike's primary key.
-     * @return List of {@link Observation}; empty list if none exist.
+     * @param hikeId The parent hike's primary key.
+     * @return List of observations; empty if none exist.
      */
-    public List<Observation> getForHike(long hikeId) {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        List<Observation> observations = new ArrayList<>();
-        Cursor cursor = null;
-        String sql = "SELECT * FROM " + DatabaseHelper.TABLE_OBSERVATIONS
-                + " WHERE " + DatabaseHelper.COL_OBS_HIKE_ID + " = ?"
-                + " ORDER BY " + DatabaseHelper.COL_OBS_TIME + " ASC";
-        try {
-            cursor = db.rawQuery(sql, new String[]{String.valueOf(hikeId)});
-            while (cursor.moveToNext()) {
-                observations.add(fromCursor(cursor));
-            }
-        } catch (SQLiteException e) {
-            Log.e(TAG, "Failed to fetch observations for hike id=" + hikeId, e);
-        } finally {
-            if (cursor != null) cursor.close();
-        }
-        return observations;
-    }
+    @Query("SELECT * FROM observations WHERE hike_id = :hikeId ORDER BY obs_time ASC")
+    List<Observation> getForHike(long hikeId);
 
     /**
-     * Retrieves a single observation by primary key.
+     * Fetches a single observation by primary key.
      *
-     * @param observationId The database ID.
-     * @return The {@link Observation}, or {@code null} if not found.
+     * @param id The database row ID.
+     * @return The matching {@link Observation}, or {@code null} if not found.
      */
-    public Observation getById(long observationId) {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        Cursor cursor = null;
-        String sql = "SELECT * FROM " + DatabaseHelper.TABLE_OBSERVATIONS
-                + " WHERE " + DatabaseHelper.COL_OBS_ID + " = ?";
-        try {
-            cursor = db.rawQuery(sql, new String[]{String.valueOf(observationId)});
-            if (cursor.moveToFirst()) {
-                return fromCursor(cursor);
-            }
-        } catch (SQLiteException e) {
-            Log.e(TAG, "Failed to fetch observation id=" + observationId, e);
-        } finally {
-            if (cursor != null) cursor.close();
-        }
-        return null;
-    }
-
-    // =========================================================================
-    // Private helpers
-    // =========================================================================
-
-    private ContentValues toContentValues(Observation obs) {
-        ContentValues cv = new ContentValues();
-        cv.put(DatabaseHelper.COL_OBS_HIKE_ID, obs.getHikeId());
-        cv.put(DatabaseHelper.COL_OBS_TITLE,   obs.getTitle());
-        cv.put(DatabaseHelper.COL_OBS_TIME,    obs.getObsTime());
-        cv.put(DatabaseHelper.COL_OBS_COMMENT, obs.getComment());
-        return cv;
-    }
-
-    private Observation fromCursor(Cursor cursor) {
-        Observation obs = new Observation();
-        obs.setId(cursor.getLong(cursor.getColumnIndexOrThrow(DatabaseHelper.COL_OBS_ID)));
-        obs.setHikeId(cursor.getLong(cursor.getColumnIndexOrThrow(DatabaseHelper.COL_OBS_HIKE_ID)));
-        obs.setTitle(cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COL_OBS_TITLE)));
-        obs.setObsTime(cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COL_OBS_TIME)));
-        obs.setComment(cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.COL_OBS_COMMENT)));
-        return obs;
-    }
+    @Query("SELECT * FROM observations WHERE id = :id")
+    Observation getById(long id);
 }
