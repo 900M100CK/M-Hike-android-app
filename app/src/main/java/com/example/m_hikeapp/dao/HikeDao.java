@@ -93,6 +93,18 @@ public interface HikeDao {
     List<Hike> getAll();
 
     /**
+     * Returns all hikes for a specific user ID ordered by date descending.
+     */
+    @Query("SELECT * FROM hikes WHERE user_id = :userId ORDER BY date DESC")
+    List<Hike> getByUser(String userId);
+
+    /**
+     * Returns all unsynced hikes for cloud synchronization.
+     */
+    @Query("SELECT * FROM hikes WHERE is_synced = 0")
+    List<Hike> getUnsynced();
+
+    /**
      * Fetches a single hike by primary key.
      *
      * @param id The database row ID.

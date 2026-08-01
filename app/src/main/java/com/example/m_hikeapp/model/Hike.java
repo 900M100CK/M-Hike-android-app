@@ -74,6 +74,14 @@ public class Hike {
     @ColumnInfo(name = "custom_field_2")
     private String customField2;
 
+    /** Firebase Auth User ID to isolate user data. */
+    @ColumnInfo(name = "user_id")
+    private String userId;
+
+    /** Local sync flag (true when synced to Firebase Cloud). */
+    @ColumnInfo(name = "is_synced")
+    private boolean isSynced;
+
     // -------------------------------------------------------------------------
     // Constructors
     // -------------------------------------------------------------------------
@@ -134,6 +142,12 @@ public class Hike {
 
     public String getCustomField2()            { return customField2; }
     public void setCustomField2(String v)      { this.customField2 = v; }
+
+    public String getUserId()                  { return userId; }
+    public void setUserId(String userId)       { this.userId = userId; }
+
+    public boolean isSynced()                  { return isSynced; }
+    public void setSynced(boolean synced)      { isSynced = synced; }
 
     @Override
     public String toString() {

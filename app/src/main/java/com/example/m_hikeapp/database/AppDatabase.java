@@ -39,7 +39,7 @@ import com.example.m_hikeapp.model.Observation;
  */
 @Database(
     entities  = { Hike.class, Observation.class },
-    version   = 1,
+    version   = 2,
     exportSchema = false   // Set to true in production to track schema history
 )
 public abstract class AppDatabase extends RoomDatabase {
@@ -80,11 +80,7 @@ public abstract class AppDatabase extends RoomDatabase {
                                     AppDatabase.class,
                                     "mhike_database"        // physical DB file name
                             )
-                            // ── Migration scaffold ─────────────────────────────
-                            // Add Migration objects here when bumping `version`.
-                            // Example for upgrading from v1 → v2:
-                            //   .addMigrations(MIGRATION_1_2)
-                            // ─────────────────────────────────────────────────
+                            .fallbackToDestructiveMigration()
                             .build();
                 }
             }

@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "800857988373",
+    "firebase_url": "https://m-hike-android-app-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "m-hike-android-app",
+    "storage_bucket": "m-hike-android-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:800857988373:android:5297fc8c06bae104c41d1c",
+        "android_client_info": {
+          "package_name": "com.example.m_hikeapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8MKOBRRTGYqFd9kAAujq8REcdErAYOsw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

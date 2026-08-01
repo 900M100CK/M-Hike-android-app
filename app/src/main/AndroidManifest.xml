@@ -24,6 +24,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Authentication activity -->
+        <activity
+            android:name=".LoginActivity"
+            android:exported="false"
+            android:label="Login"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- Kept for compatibility; redirects to HikeListActivity immediately -->
         <activity
             android:name=".MainActivity"

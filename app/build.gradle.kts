@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -42,6 +43,11 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(libs.material)
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+
+    // ── Firebase Services ──────────────────────────────────────────────────────
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-database")
 
     // ── Room Database ──────────────────────────────────────────────────────────
     // room-runtime  : core Room library (Entity, Dao, Database annotations)

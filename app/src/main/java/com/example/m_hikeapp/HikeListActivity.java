@@ -4,6 +4,8 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
@@ -15,6 +17,7 @@ import com.example.m_hikeapp.adapter.HikeAdapter;
 import com.example.m_hikeapp.databinding.ActivityHikeListBinding;
 import com.example.m_hikeapp.model.Hike;
 import com.example.m_hikeapp.repository.HikeRepository;
+import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.List;
 
@@ -51,6 +54,13 @@ public class HikeListActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+            return;
+        }
+
         binding    = ActivityHikeListBinding.inflate(getLayoutInflater());
         repository = HikeRepository.getInstance(this);
         setContentView(binding.getRoot());
@@ -66,8 +76,30 @@ public class HikeListActivity extends AppCompatActivity
     @Override
     protected void onResume() {
         super.onResume();
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+            return;
+        }
         // Reload data whenever we return from Add/Edit/Detail screens.
         loadAllHikes();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_hike_list, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_logout) {
+            FirebaseAuth.getInstance().signOut();
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     // -------------------------------------------------------------------------
