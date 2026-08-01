@@ -12,6 +12,7 @@ import com.example.m_hikeapp.dao.ObservationDao;
 import com.example.m_hikeapp.database.AppDatabase;
 import com.example.m_hikeapp.model.Hike;
 import com.example.m_hikeapp.model.Observation;
+import com.example.m_hikeapp.sync.FirebaseSyncHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -103,10 +104,38 @@ public class HikeRepository {
     private final ExecutorService executor    = Executors.newSingleThreadExecutor();
     private final Handler         mainHandler = new Handler(Looper.getMainLooper());
 
+    /** Delegates all Firebase Cloud Realtime Database interaction. */
+    private final FirebaseSyncHelper firebaseSync = FirebaseSyncHelper.getInstance();
+
     /** Package-visible for testing; use {@link #getInstance} in production. */
     HikeRepository(HikeDao hikeDao, ObservationDao observationDao) {
         this.hikeDao        = hikeDao;
         this.observationDao = observationDao;
+    }
+
+    // =========================================================================
+    // Firebase Cloud Sync Helpers
+    // =========================================================================
+
+    private String getCurrentUserId() {
+        return firebaseSync.getCurrentUserId();
+    }
+
+    private void syncHikeToFirebase(Hike hike) {
+        firebaseSync.pushHike(hike, new FirebaseSyncHelper.PushCallback() {
+            @Override
+            public void onSuccess(Hike synced) {
+                executor.execute(() -> {
+                    synced.setSynced(true);
+                    hikeDao.update(synced);
+                });
+            }
+
+            @Override
+            public void onFailure(Hike failed, Exception e) {
+                // Stays saved in Room with isSynced = false for future retry
+            }
+        });
     }
 
     // =========================================================================
@@ -121,9 +150,17 @@ public class HikeRepository {
      *                 or {@code success=false} with an error description.
      */
     public void addHike(Hike hike, OperationCallback callback) {
+        hike.setUserId(getCurrentUserId());
+        hike.setSynced(false);
+
         executor.execute(() -> {
             try {
-                long newId   = hikeDao.insert(hike);
+                long newId = hikeDao.insert(hike);
+                hike.setId(newId);
+
+                // 2. Sync to Firebase Cloud Realtime DB
+                syncHikeToFirebase(hike);
+
                 postToMain(() -> callback.onResult(true, String.valueOf(newId)));
             } catch (Exception e) {
                 postToMain(() -> callback.onResult(false,
@@ -139,10 +176,16 @@ public class HikeRepository {
      * @param callback Success flag and status message.
      */
     public void updateHike(Hike hike, OperationCallback callback) {
+        hike.setUserId(getCurrentUserId());
+        hike.setSynced(false);
+
         executor.execute(() -> {
             try {
                 int rows = hikeDao.update(hike);
                 boolean ok = rows > 0;
+                if (ok) {
+                    syncHikeToFirebase(hike);
+                }
                 postToMain(() -> callback.onResult(ok,
                         ok ? "Hike updated successfully."
                            : "Failed to update hike. It may have been deleted."));
@@ -171,6 +214,9 @@ public class HikeRepository {
                 }
                 int rows = hikeDao.delete(hike);
                 boolean ok = rows > 0;
+                if (ok) {
+                    firebaseSync.removeHike(hikeId);
+                }
                 postToMain(() -> callback.onResult(ok,
                         ok ? "Hike deleted." : "Failed to delete hike."));
             } catch (Exception e) {
@@ -187,7 +233,8 @@ public class HikeRepository {
     public void deleteAllHikes(OperationCallback callback) {
         executor.execute(() -> {
             try {
-                int rows = hikeDao.deleteAll();
+                int rows = hikeDao.deleteByUser(getCurrentUserId());
+                firebaseSync.removeAllHikes();
                 postToMain(() -> callback.onResult(true, rows + " hike(s) deleted."));
             } catch (Exception e) {
                 postToMain(() -> callback.onResult(false, "Failed to delete all hikes."));
@@ -200,13 +247,22 @@ public class HikeRepository {
     // =========================================================================
 
     /**
-     * Asynchronously retrieves all hikes, newest first.
+     * Asynchronously retrieves all hikes for current user, newest first.
+     * Also retries background sync for any unsynced local hikes.
      *
      * @param callback Delivers the result list on the main thread.
      */
     public void getAllHikes(HikeListCallback callback) {
         executor.execute(() -> {
-            List<Hike> hikes = hikeDao.getAll();
+            String currentUserId = getCurrentUserId();
+            List<Hike> hikes = hikeDao.getByUser(currentUserId);
+
+            // Retry unsynced hikes if network is available
+            List<Hike> unsynced = hikeDao.getUnsyncedByUser(currentUserId);
+            for (Hike u : unsynced) {
+                syncHikeToFirebase(u);
+            }
+
             postToMain(() -> callback.onResult(hikes));
         });
     }

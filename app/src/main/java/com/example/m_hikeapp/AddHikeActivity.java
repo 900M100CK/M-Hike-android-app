@@ -1,19 +1,27 @@
 package com.example.m_hikeapp;
 
+import android.Manifest;
 import android.app.DatePickerDialog;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.example.m_hikeapp.databinding.ActivityAddHikeBinding;
 import com.example.m_hikeapp.model.Hike;
 import com.example.m_hikeapp.repository.HikeRepository;
 import com.example.m_hikeapp.util.ValidationResult;
 import com.example.m_hikeapp.util.ValidationUtils;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 
 import java.util.Calendar;
 import java.util.Locale;
@@ -42,17 +50,29 @@ public class AddHikeActivity extends AppCompatActivity {
     // -------------------------------------------------------------------------
     private static final String DATE_FORMAT = "yyyy-MM-dd";
 
+    /** Request code for the fine-location runtime permission (Feature E2). */
+    private static final int REQUEST_LOCATION_PERMISSION = 100;
+
     // -------------------------------------------------------------------------
     // ViewBinding & dependencies
     // -------------------------------------------------------------------------
     private ActivityAddHikeBinding binding;
     private HikeRepository         repository;
 
+    /** Google Play services client used to fetch the trailhead location fix. */
+    private FusedLocationProviderClient fusedLocationClient;
+
     /** Non-null when editing an existing hike; null when adding a new one. */
     private Hike existingHike = null;
 
     /** Selected date stored as "yyyy-MM-dd". */
     private String selectedDate = "";
+
+    /** Latitude of the trailhead captured via GPS, or null if not captured. */
+    private Double capturedLatitude = null;
+
+    /** Longitude of the trailhead captured via GPS, or null if not captured. */
+    private Double capturedLongitude = null;
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -63,11 +83,13 @@ public class AddHikeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding    = ActivityAddHikeBinding.inflate(getLayoutInflater());
         repository = HikeRepository.getInstance(this);
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         setContentView(binding.getRoot());
 
         setupToolbar();
         setupDifficultySpinner();
         setupDatePicker();
+        setupLocationButton();
         setupSaveButton();
 
         // Check if we are in edit mode.
@@ -202,6 +224,133 @@ public class AddHikeActivity extends AppCompatActivity {
         binding.editTextDescription.setText(hike.getDescription());
         binding.editTextCustomField1.setText(hike.getCustomField1());
         binding.editTextCustomField2.setText(hike.getCustomField2());
+
+        capturedLatitude  = hike.getLatitude();
+        capturedLongitude = hike.getLongitude();
+        if (capturedLatitude != null && capturedLongitude != null) {
+            binding.textCoordinates.setText(
+                    String.format(Locale.US, "%.6f, %.6f", capturedLatitude, capturedLongitude));
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // GPS trailhead capture (Feature E2)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Wires the "Use my location" button to request the fine-location runtime
+     * permission (if needed) and fetch the device's last known location.
+     */
+    private void setupLocationButton() {
+        binding.buttonUseMyLocation.setOnClickListener(v ->
+                requestLocationPermission());
+    }
+
+    /**
+     * Requests the fine-location runtime permission. When already granted this
+     * falls straight through to {@link #captureLastLocation()}.
+     */
+    private void requestLocationPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            captureLastLocation();
+            return;
+        }
+        if (ActivityCompat.shouldShowRequestPermissionRationale(
+                this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.use_my_location)
+                    .setMessage(R.string.permission_location_rationale)
+                    .setPositiveButton(R.string.action_continue, (d, w) ->
+                            ActivityCompat.requestPermissions(
+                                    this,
+                                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                                    REQUEST_LOCATION_PERMISSION))
+                    .setNegativeButton(R.string.action_cancel, null)
+                    .show();
+        } else {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    REQUEST_LOCATION_PERMISSION);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQUEST_LOCATION_PERMISSION) {
+            return;
+        }
+        if (grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            captureLastLocation();
+        } else {
+            Toast.makeText(this, R.string.permission_location_denied, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /**
+     * Fetches the last known device location via the fused provider and, on
+     * success, fills the coordinates text view and stores them for saving.
+     * Falls back to getCurrentLocation if cached location is null.
+     */
+    private void captureLastLocation() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        binding.buttonUseMyLocation.setEnabled(false);
+        binding.textCoordinates.setText("Fetching location...");
+
+        fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(this, location -> {
+                    if (location != null) {
+                        binding.buttonUseMyLocation.setEnabled(true);
+                        applyCapturedLocation(location.getLatitude(), location.getLongitude());
+                    } else {
+                        fetchCurrentLocationFresh();
+                    }
+                })
+                .addOnFailureListener(this, e -> fetchCurrentLocationFresh());
+    }
+
+    private void fetchCurrentLocationFresh() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            binding.buttonUseMyLocation.setEnabled(true);
+            return;
+        }
+        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                .addOnSuccessListener(this, location -> {
+                    binding.buttonUseMyLocation.setEnabled(true);
+                    if (location != null) {
+                        applyCapturedLocation(location.getLatitude(), location.getLongitude());
+                    } else {
+                        Toast.makeText(this, R.string.gps_capture_failed, Toast.LENGTH_LONG).show();
+                        binding.textCoordinates.setText(R.string.coordinates_not_captured);
+                    }
+                })
+                .addOnFailureListener(this, e -> {
+                    binding.buttonUseMyLocation.setEnabled(true);
+                    Toast.makeText(this, R.string.gps_capture_failed, Toast.LENGTH_LONG).show();
+                    binding.textCoordinates.setText(R.string.coordinates_not_captured);
+                });
+    }
+
+    /**
+     * Stores the captured coordinates and mirrors them into the coordinates
+     * text view.
+     *
+     * @param lat Trailhead latitude.
+     * @param lng Trailhead longitude.
+     */
+    private void applyCapturedLocation(double lat, double lng) {
+        capturedLatitude  = lat;
+        capturedLongitude = lng;
+        binding.textCoordinates.setText(
+                String.format(Locale.US, "%.6f, %.6f", lat, lng));
     }
 
     // -------------------------------------------------------------------------
@@ -235,6 +384,9 @@ public class AddHikeActivity extends AppCompatActivity {
         hike.setDescription(getText(binding.editTextDescription));
         hike.setCustomField1(getText(binding.editTextCustomField1));
         hike.setCustomField2(getText(binding.editTextCustomField2));
+
+        hike.setLatitude(capturedLatitude);
+        hike.setLongitude(capturedLongitude);
 
         return hike;
     }
@@ -311,6 +463,15 @@ public class AddHikeActivity extends AppCompatActivity {
         sb.append("Parking: ").append(hike.isParkingAvailable() ? "Yes" : "No").append("\n");
         sb.append("Length: ").append(hike.getLengthKm()).append(" km\n");
         sb.append("Difficulty: ").append(hike.getDifficulty()).append("\n");
+
+        if (hike.getLatitude() != null && hike.getLongitude() != null) {
+            sb.append("Coordinates: ")
+                    .append(String.format(Locale.US, "%.6f, %.6f",
+                            hike.getLatitude(), hike.getLongitude()))
+                    .append("\n");
+        } else {
+            sb.append("Coordinates: Not captured\n");
+        }
 
         if (hike.getDescription() != null && !hike.getDescription().isEmpty()) {
             sb.append("Description: ").append(hike.getDescription()).append("\n");

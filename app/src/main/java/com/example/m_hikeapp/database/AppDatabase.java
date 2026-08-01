@@ -39,7 +39,7 @@ import com.example.m_hikeapp.model.Observation;
  */
 @Database(
     entities  = { Hike.class, Observation.class },
-    version   = 1,
+    version   = 3,
     exportSchema = false   // Set to true in production to track schema history
 )
 public abstract class AppDatabase extends RoomDatabase {
@@ -80,11 +80,8 @@ public abstract class AppDatabase extends RoomDatabase {
                                     AppDatabase.class,
                                     "mhike_database"        // physical DB file name
                             )
-                            // ── Migration scaffold ─────────────────────────────
-                            // Add Migration objects here when bumping `version`.
-                            // Example for upgrading from v1 → v2:
-                            //   .addMigrations(MIGRATION_1_2)
-                            // ─────────────────────────────────────────────────
+                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                            .fallbackToDestructiveMigration()
                             .build();
                 }
             }
@@ -116,7 +113,37 @@ public abstract class AppDatabase extends RoomDatabase {
     static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override
         public void migrate(SupportSQLiteDatabase database) {
-            // TODO: Add ALTER TABLE statements when bumping to version 2
+            // Version 1 -> 2 added the observation observation table plus the
+            // user_id/is_synced columns; kept empty because version 2 used a
+            // destructive fallback in earlier builds. Keeping it registered so
+            // Room can chain 1 -> 2 -> 3 cleanly.
+        }
+    };
+
+    /**
+     * Migration from version 2 -> 3 (M-Hike v3.0 feature release).
+     *
+     * <p>Adds the six Feature G columns to the {@code hikes} table:</p>
+     * <ul>
+     *   <li><b>G1</b> Map/GPS: {@code latitude}, {@code longitude} (REAL, nullable)</li>
+     *   <li><b>G2</b> Photos: {@code photo_uri} (TEXT, nullable)</li>
+     *   <li><b>G3</b> Duration: {@code estimated_duration_min}, {@code actual_duration_min} (INTEGER, default 0)</li>
+     *   <li><b>G4</b> Weather: {@code weather_condition}, {@code weather_notes} (TEXT, nullable)</li>
+     *   <li><b>G6</b> Rating: {@code trail_rating} (INTEGER, nullable), {@code trail_notes} (TEXT, nullable)</li>
+     * </ul>
+     */
+    static final Migration MIGRATION_2_3 = new Migration(2, 3) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE hikes ADD COLUMN latitude REAL");
+            database.execSQL("ALTER TABLE hikes ADD COLUMN longitude REAL");
+            database.execSQL("ALTER TABLE hikes ADD COLUMN photo_uri TEXT");
+            database.execSQL("ALTER TABLE hikes ADD COLUMN estimated_duration_min INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE hikes ADD COLUMN actual_duration_min INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE hikes ADD COLUMN weather_condition TEXT");
+            database.execSQL("ALTER TABLE hikes ADD COLUMN weather_notes TEXT");
+            database.execSQL("ALTER TABLE hikes ADD COLUMN trail_rating INTEGER");
+            database.execSQL("ALTER TABLE hikes ADD COLUMN trail_notes TEXT");
         }
     };
 }

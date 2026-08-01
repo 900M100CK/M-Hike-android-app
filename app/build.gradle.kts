@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -12,6 +13,10 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+
+        // Feature G1: Google Maps API key. Provide it via -PMAPS_API_KEY,
+        // gradle.properties, or an environment variable to enable map rendering.
+        manifestPlaceholders["MAPS_API_KEY"] = System.getenv("MAPS_API_KEY") ?: ""
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -42,6 +47,15 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(libs.material)
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+
+    // ── Google Maps & Location (G1) ────────────────────────────────────────────
+    implementation(libs.play.services.maps)
+    implementation(libs.play.services.location)
+
+    // ── Firebase Services ──────────────────────────────────────────────────────
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-database")
 
     // ── Room Database ──────────────────────────────────────────────────────────
     // room-runtime  : core Room library (Entity, Dao, Database annotations)

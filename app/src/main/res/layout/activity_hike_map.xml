@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  activity_hike_map.xml
+  Trailhead location map screen (Feature G1). Shows a Google Maps view with a
+  single branded marker, or a "No location saved" empty state when the hike
+  has no GPS coordinates.
+  Material Design 3.
+-->
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".HikeMapActivity">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:navigationIcon="@drawable/ic_arrow_back"
+            app:title="@string/title_hike_map" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <FrameLayout
+        android:id="@+id/mapContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <fragment
+            android:id="@+id/map"
+            android:name="com.google.android.gms.maps.SupportMapFragment"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <TextView
+            android:id="@+id/textNoLocation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:padding="16dp"
+            android:text="@string/map_no_location"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+    </FrameLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -2,6 +2,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Feature G1: location access for map & GPS capture -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Feature G2: photo capture for hikes -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -11,6 +22,22 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MhikeApp">
+
+        <!-- Feature G1: Google Maps API key (set MAPS_API_KEY in gradle.properties / CI) -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
+
+        <!-- Feature G2: file access for camera photo capture -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <!-- LAUNCHER: Hike list is the entry point -->
         <activity
@@ -23,6 +50,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Authentication activity -->
+        <activity
+            android:name=".LoginActivity"
+            android:exported="false"
+            android:label="Login"
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- Kept for compatibility; redirects to HikeListActivity immediately -->
         <activity
@@ -59,6 +93,13 @@
             android:label="@string/title_search_filter"
             android:windowSoftInputMode="adjustResize"
             android:parentActivityName=".HikeListActivity" />
+
+        <!-- Feature G1: Google Maps trail location -->
+        <activity
+            android:name=".HikeMapActivity"
+            android:exported="false"
+            android:label="@string/title_hike_map"
+            android:parentActivityName=".HikeDetailActivity" />
 
     </application>
 

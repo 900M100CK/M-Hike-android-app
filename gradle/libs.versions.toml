@@ -8,6 +8,9 @@ material = "1.14.0"
 activityKtx = "1.13.0"
 constraintlayout = "2.2.1"
 roomCommon = "2.8.4"
+firebaseDatabase = "22.0.1"
+playServicesMaps = "19.0.0"
+playServicesLocation = "21.3.0"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -20,6 +23,9 @@ constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayo
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "roomCommon" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "roomCommon" }
 room-common = { group = "androidx.room", name = "room-common", version.ref = "roomCommon" }
+firebase-database = { group = "com.google.firebase", name = "firebase-database", version.ref = "firebaseDatabase" }
+play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
