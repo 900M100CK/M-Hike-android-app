@@ -21,6 +21,7 @@ import com.example.m_hikeapp.util.ValidationResult;
 import com.example.m_hikeapp.util.ValidationUtils;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 
 import java.util.Calendar;
 import java.util.Locale;
@@ -293,22 +294,49 @@ public class AddHikeActivity extends AppCompatActivity {
     /**
      * Fetches the last known device location via the fused provider and, on
      * success, fills the coordinates text view and stores them for saving.
+     * Falls back to getCurrentLocation if cached location is null.
      */
     private void captureLastLocation() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
             return;
         }
+        binding.buttonUseMyLocation.setEnabled(false);
+        binding.textCoordinates.setText("Fetching location...");
+
         fusedLocationClient.getLastLocation()
                 .addOnSuccessListener(this, location -> {
+                    if (location != null) {
+                        binding.buttonUseMyLocation.setEnabled(true);
+                        applyCapturedLocation(location.getLatitude(), location.getLongitude());
+                    } else {
+                        fetchCurrentLocationFresh();
+                    }
+                })
+                .addOnFailureListener(this, e -> fetchCurrentLocationFresh());
+    }
+
+    private void fetchCurrentLocationFresh() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            binding.buttonUseMyLocation.setEnabled(true);
+            return;
+        }
+        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                .addOnSuccessListener(this, location -> {
+                    binding.buttonUseMyLocation.setEnabled(true);
                     if (location != null) {
                         applyCapturedLocation(location.getLatitude(), location.getLongitude());
                     } else {
                         Toast.makeText(this, R.string.gps_capture_failed, Toast.LENGTH_LONG).show();
+                        binding.textCoordinates.setText(R.string.coordinates_not_captured);
                     }
                 })
-                .addOnFailureListener(this, e ->
-                        Toast.makeText(this, R.string.gps_capture_failed, Toast.LENGTH_LONG).show());
+                .addOnFailureListener(this, e -> {
+                    binding.buttonUseMyLocation.setEnabled(true);
+                    Toast.makeText(this, R.string.gps_capture_failed, Toast.LENGTH_LONG).show();
+                    binding.textCoordinates.setText(R.string.coordinates_not_captured);
+                });
     }
 
     /**
