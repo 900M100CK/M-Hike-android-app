@@ -172,7 +172,9 @@ public class HikeListActivity extends AppCompatActivity
      */
     private void submitList(List<Hike> hikes) {
         adapter.submitList(hikes);
-        binding.textEmptyState.setVisibility(hikes.isEmpty() ? View.VISIBLE : View.GONE);
+        boolean empty = hikes.isEmpty();
+        binding.textEmptyState.setVisibility(empty ? View.VISIBLE : View.GONE);
+        binding.imgEmptyState.setVisibility(empty ? View.VISIBLE : View.GONE);
     }
 
     // -------------------------------------------------------------------------

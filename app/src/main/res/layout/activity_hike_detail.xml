@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   activity_hike_detail.xml
-  Hike detail + observations list screen. Uses NestedScrollView to allow
-  the observations RecyclerView to scroll as part of the page.
-  Material Design 3.
+  Hike detail + observations list screen.
+  Material Design 3 Forest Green styling with hero metrics and illustrated empty states.
 -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -11,18 +10,23 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/md_background"
     tools:context=".HikeDetailActivity">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="@color/md_background"
+        app:elevation="0dp">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/ic_arrow_back"
-            app:title="@string/title_hike_detail" />
+            app:title="@string/title_hike_detail"
+            app:titleTextAppearance="?attr/textAppearanceTitleLarge"
+            app:titleTextColor="@color/md_primary" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -38,22 +42,27 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Hike name (hero) -->
+            <!-- Hero Section: Title -->
             <TextView
                 android:id="@+id/textDetailName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceHeadlineMedium"
-                android:layout_marginBottom="4dp"
+                android:textColor="@color/md_primary"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp"
                 tools:text="Snowdon Summit Route" />
 
-            <!-- Detail card -->
+            <!-- Core Hike Metrics Card -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="2dp"
-                app:cardCornerRadius="12dp">
+                app:cardBackgroundColor="@color/md_surface"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/md_surface_variant">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -61,20 +70,21 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
-                    <!-- Location row -->
+                    <!-- Location Row -->
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="48dp"
+                        android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:layout_marginBottom="4dp">
+                        android:layout_marginBottom="12dp">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
                             android:src="@drawable/ic_location"
+                            app:tint="@color/md_primary"
                             android:contentDescription="@null"
-                            android:layout_marginEnd="8dp" />
+                            android:layout_marginEnd="10dp" />
 
                         <TextView
                             android:id="@+id/textDetailLocation"
@@ -82,24 +92,26 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="@color/md_on_surface"
                             tools:text="Snowdonia, Wales" />
 
                     </LinearLayout>
 
-                    <!-- Date row -->
+                    <!-- Date Row -->
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="48dp"
+                        android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:layout_marginBottom="4dp">
+                        android:layout_marginBottom="12dp">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
                             android:src="@drawable/ic_calendar"
+                            app:tint="@color/md_primary"
                             android:contentDescription="@null"
-                            android:layout_marginEnd="8dp" />
+                            android:layout_marginEnd="10dp" />
 
                         <TextView
                             android:id="@+id/textDetailDate"
@@ -107,24 +119,26 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:textAppearance="?attr/textAppearanceBodyLarge"
-                            tools:text="2024-07-20" />
+                            android:textColor="@color/md_on_surface"
+                            tools:text="2026-08-01" />
 
                     </LinearLayout>
 
-                    <!-- Length row -->
+                    <!-- Length Row -->
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="48dp"
+                        android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:layout_marginBottom="4dp">
+                        android:layout_marginBottom="12dp">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
                             android:src="@drawable/ic_hiking"
+                            app:tint="@color/md_primary"
                             android:contentDescription="@null"
-                            android:layout_marginEnd="8dp" />
+                            android:layout_marginEnd="10dp" />
 
                         <TextView
                             android:id="@+id/textDetailLength"
@@ -132,24 +146,27 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="@color/md_on_surface"
+                            android:textStyle="bold"
                             tools:text="14.5 km" />
 
                     </LinearLayout>
 
-                    <!-- Difficulty row -->
+                    <!-- Difficulty Row -->
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="48dp"
+                        android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:layout_marginBottom="4dp">
+                        android:layout_marginBottom="12dp">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
                             android:src="@drawable/ic_difficulty"
+                            app:tint="@color/md_primary"
                             android:contentDescription="@null"
-                            android:layout_marginEnd="8dp" />
+                            android:layout_marginEnd="10dp" />
 
                         <TextView
                             android:id="@+id/textDetailDifficulty"
@@ -157,23 +174,26 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="@color/md_on_surface"
                             tools:text="Hard" />
 
                     </LinearLayout>
 
-                    <!-- Parking row -->
+                    <!-- Parking Row -->
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="48dp"
+                        android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:gravity="center_vertical">
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="14dp">
 
                         <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
                             android:src="@drawable/ic_parking"
+                            app:tint="@color/md_primary"
                             android:contentDescription="@null"
-                            android:layout_marginEnd="8dp" />
+                            android:layout_marginEnd="10dp" />
 
                         <TextView
                             android:id="@+id/textDetailParking"
@@ -181,29 +201,36 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:textAppearance="?attr/textAppearanceBodyLarge"
+                            android:textColor="@color/md_on_surface"
                             tools:text="Parking Available" />
 
                     </LinearLayout>
 
-                    <!-- View on map -->
+                    <!-- View Map Button -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonViewMap"
                         style="@style/Widget.Material3.Button.TonalButton"
                         android:layout_width="match_parent"
                         android:layout_height="48dp"
-                        android:layout_marginTop="12dp"
                         android:text="@string/map_view_label"
-                        app:icon="@drawable/ic_location" />
+                        android:textColor="@color/md_on_primary_container"
+                        app:backgroundTint="@color/md_primary_container"
+                        app:cornerRadius="12dp"
+                        app:icon="@drawable/ic_location"
+                        app:iconTint="@color/md_on_primary_container" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Optional: Description -->
+            <!-- Optional: Description Block -->
             <TextView
                 android:id="@+id/textDetailDescription"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="@color/md_on_surface"
+                android:background="@drawable/bg_difficulty_badge"
+                android:padding="12dp"
                 android:layout_marginBottom="8dp"
                 android:visibility="gone"
                 tools:text="A challenging route via Pyg Track with stunning views." />
@@ -213,7 +240,8 @@
                 android:id="@+id/textDetailCustom1"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="@color/md_secondary"
                 android:layout_marginBottom="4dp"
                 android:visibility="gone"
                 tools:text="Note 1" />
@@ -223,61 +251,82 @@
                 android:id="@+id/textDetailCustom2"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="@color/md_secondary"
                 android:layout_marginBottom="16dp"
                 android:visibility="gone"
                 tools:text="Note 2" />
 
-            <!-- Edit hike button -->
+            <!-- Edit Hike Action -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonEditHike"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
                 android:text="@string/action_edit_hike"
+                android:textColor="@color/md_primary"
+                app:strokeColor="@color/md_primary"
+                app:cornerRadius="12dp"
+                app:icon="@drawable/ic_edit"
+                app:iconTint="@color/md_primary"
                 android:layout_marginBottom="24dp" />
 
             <!-- ============================================================ -->
-            <!-- Observations section                                          -->
+            <!-- OBSERVATIONS SECTION                                         -->
             <!-- ============================================================ -->
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="8dp">
+                android:layout_marginBottom="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/label_observations"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
+                    android:textAppearance="?attr/textAppearanceTitleLarge"
+                    android:textColor="@color/md_primary"
+                    android:textStyle="bold" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonAddObservation"
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="wrap_content"
-                    android:layout_height="48dp"
+                    android:layout_height="40dp"
                     android:text="@string/action_add_observation"
-                    app:icon="@drawable/ic_add" />
+                    android:textColor="@color/md_on_primary_container"
+                    app:backgroundTint="@color/md_primary_container"
+                    app:cornerRadius="20dp"
+                    app:icon="@drawable/ic_add"
+                    app:iconTint="@color/md_on_primary_container" />
 
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/textNoObservations"
+            <!-- Empty State for Observations -->
+            <LinearLayout
+                android:id="@+id/layoutEmptyObs"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/msg_no_observations"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textAlignment="center"
-                android:padding="16dp"
-                android:visibility="gone"
-                tools:visibility="visible" />
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="20dp">
 
-            <!-- Observations RecyclerView (nested, scroll disabled) -->
+                <TextView
+                    android:id="@+id/textNoObservations"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/msg_no_observations"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="@color/md_secondary"
+                    android:textAlignment="center"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+            </LinearLayout>
+
+            <!-- Observations RecyclerView -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerObservations"
                 android:layout_width="match_parent"
