@@ -83,6 +83,46 @@ public class Hike {
     private boolean isSynced;
 
     // -------------------------------------------------------------------------
+    // Feature G columns (schema v3)
+    // -------------------------------------------------------------------------
+
+    /** Trail GPS latitude; {@code null} when not captured. */
+    @ColumnInfo(name = "latitude")
+    private Double latitude;
+
+    /** Trail GPS longitude; {@code null} when not captured. */
+    @ColumnInfo(name = "longitude")
+    private Double longitude;
+
+    /** Content URI string of the captured hike photo; {@code null} if none. */
+    @ColumnInfo(name = "photo_uri")
+    private String photoUri;
+
+    /** Computed estimate (minutes) from the {@code util/DurationCalculator}. */
+    @ColumnInfo(name = "estimated_duration_min")
+    private int estimatedDurationMin;
+
+    /** Completed trail time (minutes); 0 = not completed yet. */
+    @ColumnInfo(name = "actual_duration_min")
+    private int actualDurationMin;
+
+    /** Weather condition at the time of the hike (G4 template value). */
+    @ColumnInfo(name = "weather_condition")
+    private String weatherCondition;
+
+    /** Optional free-text weather note. May be {@code null}. */
+    @ColumnInfo(name = "weather_notes")
+    private String weatherNotes;
+
+    /** Post-hike trail rating 1–5; {@code null} = not rated yet. */
+    @ColumnInfo(name = "trail_rating")
+    private Integer trailRating;
+
+    /** Post-hike trail review note. May be {@code null}. */
+    @ColumnInfo(name = "trail_notes")
+    private String trailNotes;
+
+    // -------------------------------------------------------------------------
     // Constructors
     // -------------------------------------------------------------------------
 
@@ -148,6 +188,33 @@ public class Hike {
 
     public boolean isSynced()                  { return isSynced; }
     public void setSynced(boolean synced)      { isSynced = synced; }
+
+    public Double getLatitude()                { return latitude; }
+    public void setLatitude(Double latitude)   { this.latitude = latitude; }
+
+    public Double getLongitude()               { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
+
+    public String getPhotoUri()                { return photoUri; }
+    public void setPhotoUri(String photoUri)   { this.photoUri = photoUri; }
+
+    public int getEstimatedDurationMin()                    { return estimatedDurationMin; }
+    public void setEstimatedDurationMin(int estimatedDurationMin) { this.estimatedDurationMin = estimatedDurationMin; }
+
+    public int getActualDurationMin()                      { return actualDurationMin; }
+    public void setActualDurationMin(int actualDurationMin) { this.actualDurationMin = actualDurationMin; }
+
+    public String getWeatherCondition()         { return weatherCondition; }
+    public void setWeatherCondition(String w)   { this.weatherCondition = w; }
+
+    public String getWeatherNotes()             { return weatherNotes; }
+    public void setWeatherNotes(String w)       { this.weatherNotes = w; }
+
+    public Integer getTrailRating()             { return trailRating; }
+    public void setTrailRating(Integer rating)  { this.trailRating = rating; }
+
+    public String getTrailNotes()               { return trailNotes; }
+    public void setTrailNotes(String notes)     { this.trailNotes = notes; }
 
     @Override
     public String toString() {

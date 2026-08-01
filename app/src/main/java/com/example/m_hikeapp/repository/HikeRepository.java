@@ -12,9 +12,7 @@ import com.example.m_hikeapp.dao.ObservationDao;
 import com.example.m_hikeapp.database.AppDatabase;
 import com.example.m_hikeapp.model.Hike;
 import com.example.m_hikeapp.model.Observation;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
+import com.example.m_hikeapp.sync.FirebaseSyncHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -106,6 +104,9 @@ public class HikeRepository {
     private final ExecutorService executor    = Executors.newSingleThreadExecutor();
     private final Handler         mainHandler = new Handler(Looper.getMainLooper());
 
+    /** Delegates all Firebase Cloud Realtime Database interaction. */
+    private final FirebaseSyncHelper firebaseSync = FirebaseSyncHelper.getInstance();
+
     /** Package-visible for testing; use {@link #getInstance} in production. */
     HikeRepository(HikeDao hikeDao, ObservationDao observationDao) {
         this.hikeDao        = hikeDao;
@@ -117,32 +118,24 @@ public class HikeRepository {
     // =========================================================================
 
     private String getCurrentUserId() {
-        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
-            return FirebaseAuth.getInstance().getCurrentUser().getUid();
-        }
-        return "anonymous";
-    }
-
-    private DatabaseReference getFirebaseRef() {
-        String userId = getCurrentUserId();
-        return FirebaseDatabase.getInstance("https://m-hike-android-app-default-rtdb.asia-southeast1.firebasedatabase.app")
-                .getReference("users")
-                .child(userId)
-                .child("hikes");
+        return firebaseSync.getCurrentUserId();
     }
 
     private void syncHikeToFirebase(Hike hike) {
-        if (hike == null || hike.getId() <= 0) return;
-        getFirebaseRef().child(String.valueOf(hike.getId())).setValue(hike)
-            .addOnSuccessListener(unused -> {
+        firebaseSync.pushHike(hike, new FirebaseSyncHelper.PushCallback() {
+            @Override
+            public void onSuccess(Hike synced) {
                 executor.execute(() -> {
-                    hike.setSynced(true);
-                    hikeDao.update(hike);
+                    synced.setSynced(true);
+                    hikeDao.update(synced);
                 });
-            })
-            .addOnFailureListener(e -> {
+            }
+
+            @Override
+            public void onFailure(Hike failed, Exception e) {
                 // Stays saved in Room with isSynced = false for future retry
-            });
+            }
+        });
     }
 
     // =========================================================================
@@ -222,7 +215,7 @@ public class HikeRepository {
                 int rows = hikeDao.delete(hike);
                 boolean ok = rows > 0;
                 if (ok) {
-                    getFirebaseRef().child(String.valueOf(hikeId)).removeValue();
+                    firebaseSync.removeHike(hikeId);
                 }
                 postToMain(() -> callback.onResult(ok,
                         ok ? "Hike deleted." : "Failed to delete hike."));
@@ -240,8 +233,8 @@ public class HikeRepository {
     public void deleteAllHikes(OperationCallback callback) {
         executor.execute(() -> {
             try {
-                int rows = hikeDao.deleteAll();
-                getFirebaseRef().removeValue();
+                int rows = hikeDao.deleteByUser(getCurrentUserId());
+                firebaseSync.removeAllHikes();
                 postToMain(() -> callback.onResult(true, rows + " hike(s) deleted."));
             } catch (Exception e) {
                 postToMain(() -> callback.onResult(false, "Failed to delete all hikes."));
@@ -265,7 +258,7 @@ public class HikeRepository {
             List<Hike> hikes = hikeDao.getByUser(currentUserId);
 
             // Retry unsynced hikes if network is available
-            List<Hike> unsynced = hikeDao.getUnsynced();
+            List<Hike> unsynced = hikeDao.getUnsyncedByUser(currentUserId);
             for (Hike u : unsynced) {
                 syncHikeToFirebase(u);
             }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Feature G2: camera photos captured into external app-specific Pictures dir -->
+    <external-files-path
+        name="hike_photos"
+        path="Pictures/" />
+    <!-- Feature G5: exported PDF reports written to the app cache dir -->
+    <cache-path
+        name="hike_reports"
+        path="reports/" />
+</paths>

@@ -89,6 +89,29 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- G1 GPS capture: single-fix trailhead coordinates -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonUseMyLocation"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:text="@string/use_my_location"
+                android:textColor="@color/md_primary"
+                app:icon="@drawable/ic_location"
+                app:iconTint="@color/md_primary" />
+
+            <TextView
+                android:id="@+id/textCoordinates"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:contentDescription="@string/label_coordinates"
+                android:paddingHorizontal="4dp"
+                android:text="@string/coordinates_not_captured"
+                android:textColor="@color/md_on_background"
+                android:textSize="14sp" />
+
             <!-- Date (required) – tapping opens DatePickerDialog -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/inputLayoutDate"

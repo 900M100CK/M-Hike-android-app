@@ -91,6 +91,13 @@ public class HikeDetailActivity extends AppCompatActivity
     }
 
     private void setupButtons() {
+        // View trailhead on the map
+        binding.buttonViewMap.setOnClickListener(v -> {
+            Intent intent = new Intent(this, HikeMapActivity.class);
+            intent.putExtra(HikeListActivity.EXTRA_HIKE_ID, hikeId);
+            startActivity(intent);
+        });
+
         // Edit this hike
         binding.buttonEditHike.setOnClickListener(v -> {
             Intent intent = new Intent(this, AddHikeActivity.class);

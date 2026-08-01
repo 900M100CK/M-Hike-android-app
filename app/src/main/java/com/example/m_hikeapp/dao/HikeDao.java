@@ -80,6 +80,18 @@ public interface HikeDao {
     @Query("DELETE FROM hikes")
     int deleteAll();
 
+    /**
+     * Deletes every hike belonging to a specific user (and observations via CASCADE).
+     *
+     * <p>User-scoped alternative to {@link #deleteAll()} so "delete all" never
+     * wipes another user's local rows on a shared device.</p>
+     *
+     * @param userId Firebase Auth user ID whose rows should be removed.
+     * @return Total number of hike rows deleted for that user.
+     */
+    @Query("DELETE FROM hikes WHERE user_id = :userId")
+    int deleteByUser(String userId);
+
     // =========================================================================
     // Read operations
     // =========================================================================
@@ -103,6 +115,19 @@ public interface HikeDao {
      */
     @Query("SELECT * FROM hikes WHERE is_synced = 0")
     List<Hike> getUnsynced();
+
+    /**
+     * Returns all unsynced hikes belonging to a specific user.
+     *
+     * <p>User-scoped alternative to {@link #getUnsynced()} so a background sync
+     * retry never pushes another user's pending rows when a device is shared
+     * between accounts.</p>
+     *
+     * @param userId Firebase Auth user ID whose pending hikes should be returned.
+     * @return Unsynced hikes for that user (empty list if none).
+     */
+    @Query("SELECT * FROM hikes WHERE is_synced = 0 AND user_id = :userId")
+    List<Hike> getUnsyncedByUser(String userId);
 
     /**
      * Fetches a single hike by primary key.

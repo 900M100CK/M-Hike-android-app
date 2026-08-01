@@ -185,6 +185,16 @@
 
                     </LinearLayout>
 
+                    <!-- View on map -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonViewMap"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/map_view_label"
+                        app:icon="@drawable/ic_location" />
+
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
