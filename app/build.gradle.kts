@@ -14,10 +14,6 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        // Feature G1: Google Maps API key. Provide it via -PMAPS_API_KEY,
-        // gradle.properties, or an environment variable to enable map rendering.
-        manifestPlaceholders["MAPS_API_KEY"] = System.getenv("MAPS_API_KEY") ?: ""
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -38,6 +34,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 
@@ -48,8 +45,8 @@ dependencies {
     implementation(libs.material)
     implementation("androidx.recyclerview:recyclerview:1.3.2")
 
-    // ── Google Maps & Location (G1) ────────────────────────────────────────────
-    implementation(libs.play.services.maps)
+    // ── Maps & Location (G1) ──────────────────────────────────────────────────
+    implementation(libs.osmdroid)
     implementation(libs.play.services.location)
 
     // ── Firebase Services ──────────────────────────────────────────────────────
