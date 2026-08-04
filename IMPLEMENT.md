@@ -1,271 +1,84 @@
-# IMPLEMENT.md — M-Hike Hybrid Architecture, Authentication & Authorization
+# M-Hike Application - Technical Implementation Specification
 
-## 1. System Design: Hybrid Database Architecture
+This document details the architecture and features of the M-Hike Android application, intended as a reference for re-implementing the app in **React Native**.
 
-The hybrid approach uses **Room Database as the primary, offline-first local cache** for fast UI rendering and offline usability, while **Firebase Realtime Database handles cloud synchronization and multi-user data storage**.
+## 1. Project Overview
+M-Hike is a mobile application for hikers to record their journeys, capture observations (weather, wildlife, trail conditions), and track their real-time path on a map.
 
-### Architecture & Data Flow Diagram
+## 2. Technical Stack (Android)
+- **Language**: Java
+- **UI Framework**: XML Layouts + Material Design 3
+- **Local Database**: Room (SQLite)
+- **Cloud Database**: Firebase Realtime Database
+- **Authentication**: Firebase Auth
+- **Maps**: Mapbox Maps SDK for Android v11.27.0
+- **Location**: Mapbox Common Location Service + Google Play Services Location
 
-```
-+-----------------------------------------------------------------------------------+
-|                                  ANDROID CLIENT                                   |
-|                                                                                   |
-|  +--------------------+         +--------------------+         +---------------+  |
-|  |   LoginActivity /  |         |   HikeList / Add   |         |    Auth /     |  |
-|  |   RegisterActivity |         |   Hike Activities  |         | Security Rules|  |
-|  +---------+----------+         +---------+----------+         +-------+-------+  |
-|            |                              |                            |          |
-|            | (Authenticate)               v                            v          |
-|            |                    +--------------------+         +---------------+  |
-|            +------------------->|  HikeRepository    |<------->| Firebase Auth |  |
-|                                 +----+----------+----+         | (UID Token)   |  |
-|                                      |          |              +---------------+  |
-|                   (Write Local First)|          |(Sync Cloud)                     |
-|                                      v          v                                 |
-|                              +-------+--+    +--+---------------+                 |
-|                              |  Room    |    | Firebase Realtime|                 |
-|                              | Local DB |    | Database         |                 |
-|                              +----------+    +--------+---------+                 |
-+-------------------------------------------------------|---------------------------+
-|
-v
-+--------------------------+
-| FIREBASE CLOUD REALTIME  |
-| /users/{uid}/hikes/      |
-+--------------------------+
-```
+## 3. Data Models
 
-### Hybrid Data Strategy
-1. **Local-First Writes**: When a user creates/updates a Hike or Observation, the app immediately saves it to **Room DB** (marked with `isSynced = false`).
-2. **Background Cloud Synchronization**: A repository worker listens for active network connection, then pushes unsynced local Room records to `/users/{user_id}/hikes/` in Firebase.
-3. **Data Isolation (Authorization)**: Each user's data lives under their unique Firebase `UID` in the cloud JSON tree, preventing unauthorized access across accounts.
+### Hike Entity
+| Field | Type | Description |
+|---|---|---|
+| id | long (PK) | Auto-generated local ID |
+| name | String | Name of the hike (Required) |
+| location | String | General location name (Required) |
+| date | String | Hike date (YYYY-MM-DD) |
+| parkingAvailable | boolean | Flag for parking availability |
+| lengthKm | double | Total distance in kilometers |
+| difficulty | String | Easy, Moderate, Hard, Expert |
+| description | String | Optional user notes |
+| latitude / longitude | Double | Trailhead GPS coordinates |
+| userId | String | Firebase UID for data ownership |
+| isSynced | boolean | Local sync status with Firebase |
 
----
+### Observation Entity
+| Field | Type | Description |
+|---|---|---|
+| id | long (PK) | Auto-generated local ID |
+| hikeId | long (FK) | Reference to parent Hike |
+| title | String | Observation name (e.g., "Heavy Rain") |
+| time | String | Time of observation (HH:mm) |
+| comments | String | Optional additional details |
 
-## 2. Firebase Security Rules (Authorization)
+## 4. Feature Set & Business Logic
 
-To enforce user-level authorization and prevent unauthorized reading/writing of another user's hikes, set these rules in the **Firebase Console → Realtime Database → Rules tab**:
+### A. Authentication
+- Email/Password Sign-in and Sign-up via Firebase.
+- Persistent session: App redirects to Login if user is not authenticated.
 
-```json
-{
-  "rules": {
-    "users": {
-      "$uid": {
-        // Only the authenticated user matching this UID can read/write their own hikes
-        ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid",
-        "hikes": {
-          ".indexOn": ["name", "date", "location"]
-        }
-      }
-    }
-  }
-}
-```
+### B. Hike Management
+- **List View**: RecyclerView showing all hikes for the current user.
+- **Search**: Real-time filtering by hike name.
+- **Advanced Filter**: Filter by location, date range, and distance.
+- **Confirmation**: Show summary dialog before saving a new hike.
 
----
+### C. Map & GPS (Feature G1)
+- **Official Mapbox v11**: Using official "Outdoors" style.
+- **Trailhead Display**: Dropping a marker at the saved coordinates.
+- **Tap-to-Set**: User can tap anywhere on the map to update the hike's trailhead position.
+- **My Location**: Button to center map on device's current location.
+- **Trail Tracking**:
+    - Uses Mapbox Location Service (Highest accuracy).
+    - Draws a blue **Polyline** as the user moves.
+    - Uses Mapbox **Viewport Plugin** to keep the user in center.
+- **Search Bar**: Uses Nominatim API to find places and jump to them.
+- **Offline Maps**: Uses Mapbox `OfflineManager` and `TileStore` to download specific hike regions for use without internet.
 
-## 3. Project Dependencies Setup
+### D. Cloud Synchronization
+- Automatic push to Firebase Realtime Database when a hike is added/edited.
+- Background sync for local changes made while offline.
 
-Add the required Firebase Authentication and Room dependencies to your `app/build.gradle` file:
+## 5. Suggested React Native Stack
+- **Framework**: Expo or React Native CLI
+- **Navigation**: `@react-navigation/native` + `stack`
+- **Maps**: `@rnmapbox/maps` (Official recommendation for Mapbox)
+- **Local DB**: `react-native-sqlite-storage` or `expo-sqlite`
+- **Location**: `expo-location` or `react-native-geolocation-service`
+- **Networking**: `axios` or `fetch` (for Nominatim API)
+- **State Management**: `Context API` or `Redux Toolkit`
 
-```groovy
-dependencies {
-    // Room Database
-    implementation "androidx.room:room-runtime:2.6.1"
-    annotationProcessor "androidx.room:room-compiler:2.6.1"
-
-    // Firebase BoM (Bill of Materials)
-    implementation platform('com.google.firebase:firebase-bom:32.7.0')
-    implementation 'com.google.firebase:firebase-auth'
-    implementation 'com.google.firebase:firebase-database'
-}
-```
-
----
-
-## 4. Implementation Code
-
-### A. Updated Room Entity (`HikeEntity.java`)
-
-Extend your existing Room entity to include sync flags and the associated `userId`.
-
-```java
-package com.example.mhike.models;
-
-import androidx.annotation.NonNull;
-import androidx.room.Entity;
-import androidx.room.PrimaryKey;
-
-@Entity(tableName = "hikes")
-public class HikeEntity {
-    @PrimaryKey
-    @NonNull
-    public String id; // Use UUID String so local IDs match Firebase keys
-    public String userId; // Firebase Auth UID
-    public String name;
-    public String location;
-    public String date;
-    public boolean parkingAvailable;
-    public double length;
-    public String difficulty;
-    public String description;
-    public boolean isSynced; // Local sync flag
-
-    public HikeEntity() {}
-}
-```
-
----
-
-### B. Authentication Activities (`LoginActivity.java`)
-
-```java
-package com.example.mhike.activities;
-
-import android.content.Intent;
-import android.os.Bundle;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.Toast;
-import androidx.appcompat.app.AppCompatActivity;
-import com.example.mhike.R;
-import com.google.firebase.auth.FirebaseAuth;
-
-public class LoginActivity extends AppCompatActivity {
-    private EditText etEmail, etPassword;
-    private Button btnLogin, btnRegister;
-    private FirebaseAuth mAuth;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_login);
-
-        mAuth = FirebaseAuth.getInstance();
-
-        // Redirect if already logged in
-        if (mAuth.getCurrentUser() != null) {
-            startActivity(new Intent(LoginActivity.this, MainActivity.class));
-            finish();
-        }
-
-        etEmail = findViewById(R.id.etEmail);
-        etPassword = findViewById(R.id.etPassword);
-        btnLogin = findViewById(R.id.btnLogin);
-        btnRegister = findViewById(R.id.btnRegister);
-
-        btnLogin.setOnClickListener(v -> loginUser());
-        btnRegister.setOnClickListener(v -> registerUser());
-    }
-
-    private void loginUser() {
-        String email = etEmail.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
-
-        if (email.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this, "Please complete all fields", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        mAuth.signInWithEmailAndPassword(email, password)
-            .addOnSuccessListener(authResult -> {
-                Toast.makeText(this, "Login successful", Toast.LENGTH_SHORT).show();
-                startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                finish();
-            })
-            .addOnFailureListener(e -> 
-                Toast.makeText(this, "Auth failed: " + e.getMessage(), Toast.LENGTH_LONG).show()
-            );
-    }
-
-    private void registerUser() {
-        String email = etEmail.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
-
-        if (email.isEmpty() || password.length() < 6) {
-            Toast.makeText(this, "Password must be at least 6 characters", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        mAuth.createUserWithEmailAndPassword(email, password)
-            .addOnSuccessListener(authResult -> {
-                Toast.makeText(this, "Account created successfully", Toast.LENGTH_SHORT).show();
-                startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                finish();
-            })
-            .addOnFailureListener(e -> 
-                Toast.makeText(this, "Registration failed: " + e.getMessage(), Toast.LENGTH_LONG).show()
-            );
-    }
-}
-```
-
----
-
-### C. Hybrid Repository Syncing (`HikeRepository.java`)
-
-This class manages writing locally to Room first, then synchronizing with Firebase Realtime Database under the authenticated user's node (`users/{uid}/hikes`).
-
-```java
-package com.example.mhike.database;
-
-import android.content.Context;
-import com.example.mhike.models.HikeEntity;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import java.util.concurrent.Executors;
-
-public class HikeRepository {
-    private final HikeDao hikeDao;
-    private final DatabaseReference firebaseRef;
-    private final String currentUserId;
-
-    public HikeRepository(Context context, String databaseUrl) {
-        AppDatabase db = AppDatabase.getInstance(context);
-        this.hikeDao = db.hikeDao();
-        
-        this.currentUserId = FirebaseAuth.getInstance().getCurrentUser() != null 
-                ? FirebaseAuth.getInstance().getCurrentUser().getUid() 
-                : "anonymous";
-
-        // Scoped Firebase path strictly enforced by UID
-        this.firebaseRef = FirebaseDatabase.getInstance(databaseUrl)
-                .getReference("users")
-                .child(currentUserId)
-                .child("hikes");
-    }
-
-    public void insertHike(HikeEntity hike) {
-        hike.userId = currentUserId;
-        hike.isSynced = false;
-
-        Executors.newSingleThreadExecutor().execute(() -> {
-            // 1. Save to local Room Database
-            hikeDao.insertHike(hike);
-
-            // 2. Sync to Firebase Cloud Realtime DB
-            firebaseRef.child(hike.id).setValue(hike)
-                .addOnSuccessListener(unused -> {
-                    // Mark as synced locally upon cloud success
-                    Executors.newSingleThreadExecutor().execute(() -> {
-                        hike.isSynced = true;
-                        hikeDao.updateHike(hike);
-                    });
-                })
-                .addOnFailureListener(e -> {
-                    // Stays saved in Room with isSynced = false for future retry
-                });
-        });
-    }
-}
-```
-
----
-
-## 5. Verification Checklist
-
-* [ ] **Auth Check**: Unauthenticated users are redirected to `LoginActivity` on app start.
-* [ ] **Authorization Check**: Verify in Firebase Console that entries are saved strictly under `/users/<USER_UID>/hikes/<HIKE_ID>`.
-* [ ] **Offline Resilience**: Turn on Airplane mode, save a hike (persists to Room), turn off Airplane mode (syncs back to Firebase).
+## 6. Implementation Notes for Agent
+1. **Permissions**: Request `ACCESS_FINE_LOCATION` and `INTERNET` at startup.
+2. **Lifecycle**: Ensure MapView is paused/resumed correctly to save battery.
+3. **Mapbox Setup**: Requires a Mapbox account and public/secret tokens.
+4. **Nominatim**: Add a custom `User-Agent` header to search requests to avoid being blocked.

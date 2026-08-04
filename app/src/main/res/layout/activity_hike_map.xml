@@ -1,54 +1,81 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  activity_hike_map.xml
-  Trailhead location map screen (Feature G1). Shows an OpenStreetMap view
-  (osmdroid) with a single branded marker and realtime tracking, or a
-  "No location saved" empty state when the hike has no GPS coordinates.
-  Material Design 3.
--->
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/md_background"
     tools:context=".HikeMapActivity">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="@color/md_background"
+        app:elevation="0dp">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/ic_arrow_back"
-            app:title="@string/title_hike_map" />
+            app:title="@string/title_hike_map"
+            app:titleTextAppearance="?attr/textAppearanceTitleLarge"
+            app:titleTextColor="@color/md_primary" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
     <FrameLayout
-        android:id="@+id/mapContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <org.osmdroid.views.MapView
-            android:id="@+id/map"
+        <com.mapbox.maps.MapView
+            android:id="@+id/mapView"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-        <TextView
-            android:id="@+id/textNoLocation"
+        <!-- Floating Map Control Buttons -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:padding="16dp"
-            android:text="@string/map_no_location"
-            android:textAppearance="?attr/textAppearanceBodyLarge"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:visibility="gone"
-            tools:visibility="visible" />
+            android:layout_gravity="bottom|end"
+            android:layout_margin="16dp"
+            android:orientation="vertical">
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/fabRecenter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:contentDescription="Recenter Hike"
+                android:src="@drawable/ic_location"
+                app:backgroundTint="@color/md_surface"
+                app:tint="@color/md_primary"
+                app:fabSize="normal" />
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/fabZoomIn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:contentDescription="Zoom In"
+                android:src="@drawable/ic_add"
+                app:backgroundTint="@color/md_surface"
+                app:tint="@color/md_primary"
+                app:fabSize="mini" />
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/fabZoomOut"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="Zoom Out"
+                android:src="@drawable/ic_remove"
+                app:backgroundTint="@color/md_surface"
+                app:tint="@color/md_primary"
+                app:fabSize="mini" />
+
+        </LinearLayout>
 
     </FrameLayout>
 

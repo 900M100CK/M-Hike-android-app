@@ -10,7 +10,10 @@ constraintlayout = "2.2.1"
 roomCommon = "2.8.4"
 firebaseDatabase = "22.0.1"
 playServicesLocation = "21.3.0"
-osmdroid = "6.1.20"
+mapbox = "11.27.0"
+mapboxSearch = "2.8.0"
+okhttp = "4.12.0"
+gson = "2.10.1"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -25,8 +28,10 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 room-common = { group = "androidx.room", name = "room-common", version.ref = "roomCommon" }
 firebase-database = { group = "com.google.firebase", name = "firebase-database", version.ref = "firebaseDatabase" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
-osmdroid = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }
+mapbox-maps = { group = "com.mapbox.maps", name = "android-ndk27", version.ref = "mapbox" }
+mapbox-search = { group = "com.mapbox.search", name = "mapbox-search-android", version.ref = "mapboxSearch" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-

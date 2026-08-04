@@ -2,15 +2,10 @@ package com.example.m_hikeapp;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
-import android.location.Location;
 import android.os.Bundle;
-import android.os.Looper;
-import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -18,113 +13,39 @@ import androidx.core.content.ContextCompat;
 import com.example.m_hikeapp.databinding.ActivityHikeMapBinding;
 import com.example.m_hikeapp.model.Hike;
 import com.example.m_hikeapp.repository.HikeRepository;
-import com.example.m_hikeapp.util.GpsUtils;
 import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
-
-import org.osmdroid.config.Configuration;
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
-import org.osmdroid.util.GeoPoint;
-import org.osmdroid.views.MapView;
-import org.osmdroid.views.overlay.Marker;
-import org.osmdroid.views.overlay.Polyline;
-
-import java.util.ArrayList;
-import java.util.List;
+import com.mapbox.geojson.Point;
+import com.mapbox.maps.CameraOptions;
+import com.mapbox.maps.MapView;
+import com.mapbox.maps.Style;
 
 /**
- * Trailhead location map screen (Feature G1).
- * <p>
- * Requires the {@link HikeListActivity#EXTRA_HIKE_ID} extra (the id of the hike
- * whose trailhead should be shown). When the hike has valid GPS coordinates a
- * single branded marker is dropped at the trailhead and the camera is zoomed to
- * level 14; otherwise a "No location saved" empty state is displayed.
- * <p>
- * Rendered with osmdroid (OpenStreetMap) — no Google API key required.
+ * Activity displaying the location of a hike on Mapbox map.
  */
 public class HikeMapActivity extends AppCompatActivity {
 
-    /** Camera zoom level applied at the trailhead. */
-    private static final float TRAILHEAD_ZOOM = 14f;
-
-    /** Camera zoom level applied while following the live location. */
-    private static final float LIVE_ZOOM = 17f;
-
-    /** Location request cadence while tracking. */
-    private static final long UPDATE_INTERVAL_MS = 2000L;
-
-    /** Minimum accepted interval between location updates. */
-    private static final long FASTEST_INTERVAL_MS = 1000L;
-
-    /** Width (in px) of the traveled-path polyline. */
-    private static final float PATH_WIDTH_PX = 8f;
-
-    private static final int REQUEST_LOCATION_PERMISSION = 42;
+    public static final String EXTRA_HIKE_ID = "extra_hike_id";
+    private static final int REQUEST_LOCATION_PERMISSION = 200;
 
     private ActivityHikeMapBinding binding;
-    private HikeRepository         repository;
-    private long                   hikeId;
-
-    private MapView mapView;
-    private Hike    loadedHike;
-
+    private HikeRepository repository;
     private FusedLocationProviderClient fusedLocationClient;
-    private LocationRequest             locationRequest;
-    private LocationCallback            locationCallback;
-    private Marker                      liveLocationMarker;
-    private Polyline                    pathPolyline;
-    private final List<GeoPoint>        pathPoints = new ArrayList<>();
-    private boolean                     isTracking;
+    private long hikeId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        binding    = ActivityHikeMapBinding.inflate(getLayoutInflater());
-        repository = HikeRepository.getInstance(this);
+        binding = ActivityHikeMapBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        hikeId = getIntent().getLongExtra(HikeListActivity.EXTRA_HIKE_ID, -1L);
-        if (hikeId == -1L) {
-            Toast.makeText(this, R.string.error_invalid_hike, Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
-
+        repository = HikeRepository.getInstance(this);
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        hikeId = getIntent().getLongExtra(EXTRA_HIKE_ID, -1L);
 
         setupToolbar();
-        setupMap();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (mapView != null) {
-            mapView.onResume();
-        }
-        loadHike();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        stopLocationTracking();
-        if (mapView != null) {
-            mapView.onPause();
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        stopLocationTracking();
-        if (mapView != null) {
-            mapView.onDetach();
-        }
+        loadHikeAndInitializeMap();
     }
 
     private void setupToolbar() {
@@ -135,188 +56,156 @@ public class HikeMapActivity extends AppCompatActivity {
         binding.toolbar.setNavigationOnClickListener(v -> finish());
     }
 
-    private void setupMap() {
-        Configuration.getInstance().load(
-                this, getSharedPreferences("osmdroid", MODE_PRIVATE));
-        Configuration.getInstance().setUserAgentValue(BuildConfig.APPLICATION_ID);
+    private void loadHikeAndInitializeMap() {
+        if (hikeId == -1L) {
+            Toast.makeText(this, R.string.error_invalid_hike, Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
 
-        mapView = binding.map;
-        mapView.setTileSource(TileSourceFactory.MAPNIK);
-        mapView.setMultiTouchControls(true);
-        mapView.getController().setZoom(TRAILHEAD_ZOOM);
-    }
-
-    private void loadHike() {
         repository.getHikeById(hikeId, hike -> {
-            if (isFinishing() || isDestroyed()) {
-                return;
-            }
             if (hike == null) {
                 Toast.makeText(this, R.string.error_hike_not_found, Toast.LENGTH_SHORT).show();
                 finish();
                 return;
             }
-            loadedHike = hike;
-            renderMap();
+
+            if (getSupportActionBar() != null) {
+                getSupportActionBar().setTitle(hike.getName());
+            }
+
+            binding.mapView.getMapboxMap().loadStyleUri(Style.STANDARD, style -> {
+                // Check if lat/long coordinates exist, default to Snowdonia/UK or center if available
+                double lat = hike.getLatitude() != null ? hike.getLatitude() : 53.0685;
+                double lon = hike.getLongitude() != null ? hike.getLongitude() : -4.0763;
+
+                Point point = Point.fromLngLat(lon, lat);
+                centerMapOnPoint(point, 13.0);
+
+                // Add Point Marker Annotation using Mapbox Annotation Plugin
+                com.mapbox.maps.plugin.annotation.AnnotationPlugin annotationPlugin =
+                        com.mapbox.maps.plugin.annotation.AnnotationsUtils.getAnnotations(binding.mapView);
+                com.mapbox.maps.plugin.annotation.generated.PointAnnotationManager pointAnnotationManager =
+                        com.mapbox.maps.plugin.annotation.generated.PointAnnotationManagerKt.createPointAnnotationManager(annotationPlugin, new com.mapbox.maps.plugin.annotation.AnnotationConfig());
+
+                // Convert ic_hiking drawable to Bitmap for Mapbox annotation
+                android.graphics.drawable.Drawable drawable = ContextCompat.getDrawable(this, R.drawable.ic_hiking);
+                android.graphics.Bitmap bitmap = null;
+                if (drawable != null) {
+                    bitmap = android.graphics.Bitmap.createBitmap(
+                            drawable.getIntrinsicWidth() > 0 ? drawable.getIntrinsicWidth() * 2 : 96,
+                            drawable.getIntrinsicHeight() > 0 ? drawable.getIntrinsicHeight() * 2 : 96,
+                            android.graphics.Bitmap.Config.ARGB_8888
+                    );
+                    android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
+                    drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+                    androidx.core.graphics.drawable.DrawableCompat.setTint(drawable, ContextCompat.getColor(this, R.color.md_primary));
+                    drawable.draw(canvas);
+                }
+
+                com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions pointAnnotationOptions =
+                        new com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions()
+                                .withPoint(point);
+
+                if (bitmap != null) {
+                    pointAnnotationOptions.withIconImage(bitmap);
+                } else {
+                    pointAnnotationOptions.withTextField(hike.getName());
+                }
+
+                pointAnnotationManager.create(pointAnnotationOptions);
+
+                // Setup FAB click handlers: Recenter to Phone GPS Location
+                binding.fabRecenter.setOnClickListener(v -> moveToDeviceLocation(point));
+
+                binding.fabZoomIn.setOnClickListener(v -> {
+                    double currentZoom = binding.mapView.getMapboxMap().getCameraState().getZoom();
+                    binding.mapView.getMapboxMap().setCamera(new CameraOptions.Builder().zoom(currentZoom + 1.0).build());
+                });
+
+                binding.fabZoomOut.setOnClickListener(v -> {
+                    double currentZoom = binding.mapView.getMapboxMap().getCameraState().getZoom();
+                    binding.mapView.getMapboxMap().setCamera(new CameraOptions.Builder().zoom(currentZoom - 1.0).build());
+                });
+            });
         });
     }
 
-    private void renderMap() {
-        if (mapView == null || loadedHike == null) {
-            return;
-        }
-        if (GpsUtils.isValid(loadedHike.getLatitude(), loadedHike.getLongitude())) {
-            binding.mapContainer.setVisibility(View.VISIBLE);
-            binding.textNoLocation.setVisibility(View.GONE);
-
-            GeoPoint trailhead =
-                    new GeoPoint(loadedHike.getLatitude(), loadedHike.getLongitude());
-            mapView.getOverlays().clear();
-            Marker trailheadMarker = new Marker(mapView);
-            trailheadMarker.setPosition(trailhead);
-            trailheadMarker.setTitle(loadedHike.getName());
-            trailheadMarker.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_map_marker));
-            trailheadMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-            mapView.getOverlays().add(trailheadMarker);
-
-            // Re-add path and live marker if they exist (e.g. after rotation or resume)
-            if (pathPolyline != null && !mapView.getOverlays().contains(pathPolyline)) {
-                mapView.getOverlays().add(pathPolyline);
-            }
-            if (liveLocationMarker != null && !mapView.getOverlays().contains(liveLocationMarker)) {
-                mapView.getOverlays().add(liveLocationMarker);
-            }
-
-            mapView.getController().setZoom(TRAILHEAD_ZOOM);
-            mapView.getController().animateTo(trailhead);
-
-            startLocationTracking(trailhead);
-        } else {
-            binding.mapContainer.setVisibility(View.VISIBLE);
-            binding.textNoLocation.setVisibility(View.VISIBLE);
-        }
-    }
-
-    /**
-     * Kicks off realtime road tracking. The trailhead is used as the first
-     * point of the traveled path; live fixes refresh the blue polyline and a
-     * dedicated marker while the camera follows the device.
-     */
-    private void startLocationTracking(GeoPoint trailhead) {
-        if (isTracking) {
-            return;
-        }
+    private void moveToDeviceLocation(Point fallbackPoint) {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(
-                    this, Manifest.permission.ACCESS_FINE_LOCATION)) {
-                new AlertDialog.Builder(this)
-                        .setMessage(R.string.permission_location_rationale)
-                        .setPositiveButton(R.string.action_continue, (dialog, which) ->
-                                ActivityCompat.requestPermissions(
-                                        this,
-                                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                                        REQUEST_LOCATION_PERMISSION))
-                        .setNegativeButton(R.string.action_cancel, null)
-                        .show();
-            } else {
-                ActivityCompat.requestPermissions(
-                        this,
-                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                        REQUEST_LOCATION_PERMISSION);
-            }
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    REQUEST_LOCATION_PERMISSION);
             return;
         }
 
-        isTracking = true;
-        // Don't clear if returning from a pause; only clear if starting fresh
-        if (pathPoints.isEmpty()) {
-            pathPoints.add(trailhead);
-        }
-
-        if (pathPolyline == null) {
-            pathPolyline = new Polyline(mapView);
-            pathPolyline.setColor(Color.BLUE);
-            pathPolyline.setWidth(PATH_WIDTH_PX);
-        }
-        pathPolyline.setPoints(pathPoints);
-
-        if (!mapView.getOverlays().contains(pathPolyline)) {
-            mapView.getOverlays().add(pathPolyline);
-        }
-        mapView.invalidate();
-
-        buildLocationRequest();
-        buildLocationCallback();
-        fusedLocationClient.requestLocationUpdates(
-                locationRequest, locationCallback, Looper.getMainLooper());
+        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                .addOnSuccessListener(this, location -> {
+                    if (location != null) {
+                        Point myLocationPoint = Point.fromLngLat(location.getLongitude(), location.getLatitude());
+                        centerMapOnPoint(myLocationPoint, 15.0);
+                        Toast.makeText(HikeMapActivity.this, "Centered to your current position", Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Fallback to last known position or hike position
+                        centerMapOnPoint(fallbackPoint, 14.0);
+                        Toast.makeText(HikeMapActivity.this, "Could not fetch current GPS, showing hike position", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .addOnFailureListener(this, e -> {
+                    centerMapOnPoint(fallbackPoint, 14.0);
+                    Toast.makeText(HikeMapActivity.this, "GPS error, showing hike position", Toast.LENGTH_SHORT).show();
+                });
     }
 
-    private void buildLocationRequest() {
-        locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, UPDATE_INTERVAL_MS)
-                .setMinUpdateIntervalMillis(FASTEST_INTERVAL_MS)
-                .build();
-    }
-
-    private void buildLocationCallback() {
-        locationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(@NonNull LocationResult locationResult) {
-                Location location = locationResult.getLastLocation();
-                if (location == null) {
-                    return;
-                }
-                GeoPoint current =
-                        new GeoPoint(location.getLatitude(), location.getLongitude());
-                pathPoints.add(current);
-                if (pathPolyline != null) {
-                    pathPolyline.setPoints(pathPoints);
-                }
-                if (liveLocationMarker == null) {
-                    liveLocationMarker = new Marker(mapView);
-                    liveLocationMarker.setPosition(current);
-                    liveLocationMarker.setIcon(ContextCompat.getDrawable(
-                            HikeMapActivity.this, R.drawable.ic_location));
-                    liveLocationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
-                    mapView.getOverlays().add(liveLocationMarker);
-                } else {
-                    liveLocationMarker.setPosition(current);
-                }
-                mapView.getController().animateTo(current);
-                // Only auto-zoom on the first few fixes so the user can zoom out to see the trail
-                if (pathPoints.size() <= 2) {
-                    mapView.getController().setZoom(LIVE_ZOOM);
-                }
-                mapView.invalidate();
-            }
-        };
-    }
-
-    private void stopLocationTracking() {
-        isTracking = false;
-        if (fusedLocationClient != null && locationCallback != null) {
-            fusedLocationClient.removeLocationUpdates(locationCallback);
-        }
-    }
-
-@Override
-    public void onRequestPermissionsResult(
-            int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode != REQUEST_LOCATION_PERMISSION) {
-            return;
-        }
-        if (grantResults.length > 0
+        if (requestCode == REQUEST_LOCATION_PERMISSION && grantResults.length > 0
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            GeoPoint trailhead = loadedHike != null
-                    ? new GeoPoint(loadedHike.getLatitude(), loadedHike.getLongitude())
-                    : null;
-            if (trailhead != null && GpsUtils.isValid(
-                    loadedHike.getLatitude(), loadedHike.getLongitude())) {
-                startLocationTracking(trailhead);
-            }
-        } else {
-            Toast.makeText(this, R.string.permission_location_denied, Toast.LENGTH_LONG).show();
+            binding.fabRecenter.performClick();
+        } else if (requestCode == REQUEST_LOCATION_PERMISSION) {
+            Toast.makeText(this, R.string.permission_location_denied, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void centerMapOnPoint(Point point, double zoom) {
+        CameraOptions cameraOptions = new CameraOptions.Builder()
+                .center(point)
+                .zoom(zoom)
+                .build();
+        binding.mapView.getMapboxMap().setCamera(cameraOptions);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (binding.mapView != null) {
+            binding.mapView.onStart();
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (binding.mapView != null) {
+            binding.mapView.onStop();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (binding.mapView != null) {
+            binding.mapView.onDestroy();
+        }
+    }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        if (binding.mapView != null) {
+            binding.mapView.onLowMemory();
         }
     }
 }

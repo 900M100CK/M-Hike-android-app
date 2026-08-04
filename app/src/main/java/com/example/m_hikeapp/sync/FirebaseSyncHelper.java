@@ -18,8 +18,6 @@ import com.google.firebase.database.FirebaseDatabase;
  */
 public class FirebaseSyncHelper {
 
-    private static final String RTDB_URL =
-            "https://m-hike-android-app-default-rtdb.asia-southeast1.firebasedatabase.app";
 
     private static FirebaseSyncHelper instance;
 
@@ -63,7 +61,7 @@ public class FirebaseSyncHelper {
         if (userId == null) {
             return null;
         }
-        return FirebaseDatabase.getInstance(RTDB_URL)
+        return FirebaseDatabase.getInstance()
                 .getReference("users")
                 .child(userId)
                 .child("hikes");

@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.example.m_hikeapp" />
+                  <option name="mobileSdkAppId" value="1:318905780322:android:053e8102ac10aee780293b" />
+                  <option name="projectId" value="m-hike-android-app-71dea" />
+                  <option name="projectNumber" value="318905780322" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

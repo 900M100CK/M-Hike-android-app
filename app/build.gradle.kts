@@ -45,9 +45,14 @@ dependencies {
     implementation(libs.material)
     implementation("androidx.recyclerview:recyclerview:1.3.2")
 
-    // ── Maps & Location (G1) ──────────────────────────────────────────────────
-    implementation(libs.osmdroid)
+    // ── Mapbox Maps (G1) ──────────────────────────────────────────────────
+    implementation(libs.mapbox.maps)
+    implementation(libs.mapbox.search) {
+        exclude(group = "com.mapbox.common", module = "common")
+    }
     implementation(libs.play.services.location)
+    implementation(libs.okhttp)
+    implementation(libs.gson)
 
     // ── Firebase Services ──────────────────────────────────────────────────────
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
@@ -55,9 +60,6 @@ dependencies {
     implementation("com.google.firebase:firebase-database")
 
     // ── Room Database ──────────────────────────────────────────────────────────
-    // room-runtime  : core Room library (Entity, Dao, Database annotations)
-    // room-compiler : annotation processor — generates DAO implementations and
-    //                 validates all @Query SQL strings at COMPILE TIME.
     implementation(libs.room.runtime)
     implementation(libs.room.common)
     annotationProcessor(libs.room.compiler)

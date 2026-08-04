@@ -2,6 +2,8 @@ package com.example.m_hikeapp;
 
 import android.Manifest;
 import android.app.DatePickerDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.View;
@@ -340,8 +342,9 @@ public class AddHikeActivity extends AppCompatActivity {
     }
 
     /**
-     * Stores the captured coordinates and mirrors them into the coordinates
-     * text view.
+     * Stores the captured coordinates, mirrors them into the coordinates text
+     * view, and copies them to the clipboard so the user can paste them
+     * elsewhere.
      *
      * @param lat Trailhead latitude.
      * @param lng Trailhead longitude.
@@ -349,8 +352,13 @@ public class AddHikeActivity extends AppCompatActivity {
     private void applyCapturedLocation(double lat, double lng) {
         capturedLatitude  = lat;
         capturedLongitude = lng;
-        binding.textCoordinates.setText(
-                String.format(Locale.US, "%.6f, %.6f", lat, lng));
+        String coordinates = String.format(Locale.US, "%.6f, %.6f", lat, lng);
+        binding.textCoordinates.setText(coordinates);
+
+        ClipboardManager clipboard =
+                (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        clipboard.setPrimaryClip(ClipData.newPlainText("hike_coordinates", coordinates));
+        Toast.makeText(this, R.string.coordinates_copied, Toast.LENGTH_SHORT).show();
     }
 
     // -------------------------------------------------------------------------

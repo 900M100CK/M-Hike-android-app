@@ -111,6 +111,7 @@
     <string name="permission_location_rationale">Location permission is needed to capture the trailhead coordinates.</string>
     <string name="permission_location_denied">Location permission denied. Coordinates will not be captured.</string>
     <string name="gps_capture_failed">Could not determine your location. Please try again.</string>
+    <string name="coordinates_copied">Coordinates copied to clipboard</string>
 
     <!-- Error messages -->
     <string name="error_hike_not_found">Hike not found. It may have been deleted.</string>
