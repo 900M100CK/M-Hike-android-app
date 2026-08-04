@@ -33,6 +33,10 @@
     <string name="hint_obs_title">Observation Title *</string>
     <string name="hint_obs_time">Time (HH:mm) *</string>
     <string name="hint_obs_comment">Comment (optional)</string>
+    <string name="hint_obs_step_count">Step Count (optional)</string>
+    <string name="hint_obs_temp">Outdoor Temperature °C (optional)</string>
+    <string name="action_capture_photo">Capture Photo</string>
+    <string name="action_pick_photo">Pick Photo</string>
     <string name="hint_search_hike_name">Search by hike name…</string>
     <string name="hint_filter_location">Filter by location…</string>
     <string name="hint_date_from">From (YYYY-MM-DD)</string>

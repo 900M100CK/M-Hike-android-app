@@ -79,6 +79,86 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Outdoor Temperature (°C) -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/inputLayoutObsTemp"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:hint="@string/hint_obs_temp">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editTextObsTemp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="numberDecimal|numberSigned"
+                    android:contentDescription="@string/hint_obs_temp" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Step Count -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/inputLayoutObsStepCount"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:hint="@string/hint_obs_step_count">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editTextObsStepCount"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:contentDescription="@string/hint_obs_step_count" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Photo Section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="16dp">
+
+                <ImageView
+                    android:id="@+id/imageObsPhotoPreview"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone"
+                    android:contentDescription="Observation photo preview"
+                    android:layout_marginBottom="8dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonCapturePhoto"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:text="@string/action_capture_photo"
+                        app:icon="@drawable/ic_hiking" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonPickPhoto"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:text="@string/action_pick_photo"
+                        app:icon="@drawable/ic_hiking" />
+                </LinearLayout>
+
+            </LinearLayout>
+
             <!-- Comment (optional) -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/inputLayoutObsComment"

@@ -39,6 +39,27 @@ public class AddObservationActivity extends AppCompatActivity {
     // Lifecycle
     // -------------------------------------------------------------------------
 
+    private String capturedPhotoUriStr = null;
+    private android.net.Uri currentCaptureUri = null;
+
+    private final androidx.activity.result.ActivityResultLauncher<android.net.Uri> capturePhotoLauncher =
+            registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.TakePicture(), success -> {
+                if (Boolean.TRUE.equals(success) && currentCaptureUri != null) {
+                    capturedPhotoUriStr = currentCaptureUri.toString();
+                    binding.imageObsPhotoPreview.setImageURI(currentCaptureUri);
+                    binding.imageObsPhotoPreview.setVisibility(android.view.View.VISIBLE);
+                }
+            });
+
+    private final androidx.activity.result.ActivityResultLauncher<String> selectPhotoLauncher =
+            registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.GetContent(), uri -> {
+                if (uri != null) {
+                    capturedPhotoUriStr = uri.toString();
+                    binding.imageObsPhotoPreview.setImageURI(uri);
+                    binding.imageObsPhotoPreview.setVisibility(android.view.View.VISIBLE);
+                }
+            });
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,12 +76,44 @@ public class AddObservationActivity extends AppCompatActivity {
 
         setupToolbar();
         setupTimePicker();
+        setupPhotoButton();
         setupSaveButton();
 
         long observationId = getIntent().getLongExtra(HikeDetailActivity.EXTRA_OBSERVATION_ID, -1L);
         if (observationId != -1L) {
             loadObservationForEditing(observationId);
+        } else {
+            com.example.m_hikeapp.util.WeatherHelper.fetchDetailedWeather(this, new com.example.m_hikeapp.util.WeatherHelper.DetailedWeatherCallback() {
+                @Override
+                public void onSuccess(double temp, String condition, String forecastWarning) {
+                    runOnUiThread(() -> {
+                        if (binding.editTextObsTemp.getText().toString().isEmpty()) {
+                            binding.editTextObsTemp.setText(String.valueOf(temp));
+                        }
+                        if (!forecastWarning.isEmpty()) {
+                            Toast.makeText(AddObservationActivity.this, forecastWarning, Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }
+
+                @Override
+                public void onFailure(String errorMsg) {
+                }
+            });
         }
+    }
+
+    private void setupPhotoButton() {
+        binding.buttonPickPhoto.setOnClickListener(v -> selectPhotoLauncher.launch("image/*"));
+        binding.buttonCapturePhoto.setOnClickListener(v -> {
+            try {
+                java.io.File photoFile = com.example.m_hikeapp.util.ImageUriUtils.createPhotoFile(this);
+                currentCaptureUri = com.example.m_hikeapp.util.ImageUriUtils.toContentUri(this, photoFile);
+                capturePhotoLauncher.launch(currentCaptureUri);
+            } catch (java.io.IOException e) {
+                Toast.makeText(this, "Failed to create image file", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     // -------------------------------------------------------------------------
@@ -145,6 +198,18 @@ public class AddObservationActivity extends AppCompatActivity {
         binding.editTextObsTime.setText(obs.getObsTime());
         selectedTime = obs.getObsTime();
         binding.editTextObsComment.setText(obs.getComment());
+
+        if (obs.getStepCount() != null) {
+            binding.editTextObsStepCount.setText(String.valueOf(obs.getStepCount()));
+        }
+        if (obs.getTemperatureCelsius() != null) {
+            binding.editTextObsTemp.setText(String.valueOf(obs.getTemperatureCelsius()));
+        }
+        if (obs.getPhotoUri() != null && !obs.getPhotoUri().isEmpty()) {
+            capturedPhotoUriStr = obs.getPhotoUri();
+            binding.imageObsPhotoPreview.setImageURI(android.net.Uri.parse(obs.getPhotoUri()));
+            binding.imageObsPhotoPreview.setVisibility(android.view.View.VISIBLE);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -157,6 +222,26 @@ public class AddObservationActivity extends AppCompatActivity {
         obs.setTitle(getText(binding.editTextObsTitle));
         obs.setObsTime(selectedTime);
         obs.setComment(getText(binding.editTextObsComment));
+
+        String stepsStr = getText(binding.editTextObsStepCount);
+        if (!stepsStr.isEmpty()) {
+            try {
+                obs.setStepCount(Integer.parseInt(stepsStr));
+            } catch (NumberFormatException ignored) {}
+        } else {
+            obs.setStepCount(null);
+        }
+
+        String tempStr = getText(binding.editTextObsTemp);
+        if (!tempStr.isEmpty()) {
+            try {
+                obs.setTemperatureCelsius(Double.parseDouble(tempStr));
+            } catch (NumberFormatException ignored) {}
+        } else {
+            obs.setTemperatureCelsius(null);
+        }
+
+        obs.setPhotoUri(capturedPhotoUriStr);
         return obs;
     }
 

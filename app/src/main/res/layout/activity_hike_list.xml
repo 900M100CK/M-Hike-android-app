@@ -47,6 +47,60 @@
             android:paddingTop="12dp"
             android:paddingBottom="96dp">
 
+            <!-- Live Weather Banner Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardLiveWeather"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="@color/md_primary_container"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="14dp"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_hiking"
+                        app:tint="@color/md_on_primary_container"
+                        android:contentDescription="@null"
+                        android:layout_marginEnd="12dp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Current Weather"
+                            android:textAppearance="?attr/textAppearanceLabelMedium"
+                            android:textColor="@color/md_on_primary_container" />
+
+                        <TextView
+                            android:id="@+id/textLiveWeather"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Loading weather..."
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textColor="@color/md_on_primary_container"
+                            android:textStyle="bold" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- Search bar -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/inputLayoutSearch"

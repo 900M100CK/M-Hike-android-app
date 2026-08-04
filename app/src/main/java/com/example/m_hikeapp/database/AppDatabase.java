@@ -39,7 +39,7 @@ import com.example.m_hikeapp.model.Observation;
  */
 @Database(
     entities  = { Hike.class, Observation.class },
-    version   = 3,
+    version   = 4,
     exportSchema = false   // Set to true in production to track schema history
 )
 public abstract class AppDatabase extends RoomDatabase {
@@ -80,7 +80,7 @@ public abstract class AppDatabase extends RoomDatabase {
                                     AppDatabase.class,
                                     "mhike_database"        // physical DB file name
                             )
-                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                             .fallbackToDestructiveMigration()
                             .build();
                 }
@@ -144,6 +144,19 @@ public abstract class AppDatabase extends RoomDatabase {
             database.execSQL("ALTER TABLE hikes ADD COLUMN weather_notes TEXT");
             database.execSQL("ALTER TABLE hikes ADD COLUMN trail_rating INTEGER");
             database.execSQL("ALTER TABLE hikes ADD COLUMN trail_notes TEXT");
+        }
+    };
+
+    /**
+     * Migration from version 3 -> 4.
+     * Adds step_count, photo_uri, temperature_celsius to observations table.
+     */
+    static final Migration MIGRATION_3_4 = new Migration(3, 4) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE observations ADD COLUMN step_count INTEGER");
+            database.execSQL("ALTER TABLE observations ADD COLUMN photo_uri TEXT");
+            database.execSQL("ALTER TABLE observations ADD COLUMN temperature_celsius REAL");
         }
     };
 }

@@ -83,6 +83,21 @@ public class HikeListActivity extends AppCompatActivity
         }
         // Reload data whenever we return from Add/Edit/Detail screens.
         loadAllHikes();
+        loadLiveWeather();
+    }
+
+    private void loadLiveWeather() {
+        com.example.m_hikeapp.util.WeatherHelper.fetchCurrentWeather(this, new com.example.m_hikeapp.util.WeatherHelper.WeatherCallback() {
+            @Override
+            public void onSuccess(String weatherInfo) {
+                runOnUiThread(() -> binding.textLiveWeather.setText(weatherInfo));
+            }
+
+            @Override
+            public void onFailure(String errorMsg) {
+                runOnUiThread(() -> binding.textLiveWeather.setText("Unable to fetch weather"));
+            }
+        });
     }
 
     @Override

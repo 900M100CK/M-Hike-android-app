@@ -83,6 +83,27 @@ public class ObservationAdapter extends ListAdapter<Observation, ObservationAdap
         void bind(Observation obs, ObservationClickListener listener) {
             binding.textObsTitle.setText(obs.getTitle());
             binding.textObsTime.setText(obs.getObsTime());
+
+            // Details badge (Temp + Step count)
+            StringBuilder badgeText = new StringBuilder();
+            if (obs.getTemperatureCelsius() != null) {
+                badgeText.append("🌡 ").append(String.format(java.util.Locale.getDefault(), "%.1f°C", obs.getTemperatureCelsius()));
+            }
+            if (obs.getStepCount() != null && obs.getStepCount() > 0) {
+                if (badgeText.length() > 0) badgeText.append("  •  ");
+                badgeText.append("👣 ").append(String.format(java.util.Locale.getDefault(), "%,d steps", obs.getStepCount()));
+            }
+            binding.textObsBadgeDetails.setText(badgeText.toString());
+            binding.textObsBadgeDetails.setVisibility(badgeText.length() > 0 ? android.view.View.VISIBLE : android.view.View.GONE);
+
+            // Photo preview
+            if (obs.getPhotoUri() != null && !obs.getPhotoUri().isEmpty()) {
+                binding.imageObsItemPhoto.setImageURI(android.net.Uri.parse(obs.getPhotoUri()));
+                binding.imageObsItemPhoto.setVisibility(android.view.View.VISIBLE);
+            } else {
+                binding.imageObsItemPhoto.setVisibility(android.view.View.GONE);
+            }
+
             String comment = obs.getComment();
             binding.textObsComment.setText(
                     (comment != null && !comment.isEmpty()) ? comment : "—");

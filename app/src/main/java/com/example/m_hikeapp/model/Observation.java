@@ -55,6 +55,18 @@ public class Observation {
     @ColumnInfo(name = "comment")
     private String comment;
 
+    /** Step count recorded for this observation. May be {@code null}. */
+    @ColumnInfo(name = "step_count")
+    private Integer stepCount;
+
+    /** Captured photo URI string. May be {@code null}. */
+    @ColumnInfo(name = "photo_uri")
+    private String photoUri;
+
+    /** Outdoor temperature in degrees Celsius (°C). May be {@code null}. */
+    @ColumnInfo(name = "temperature_celsius")
+    private Double temperatureCelsius;
+
     // -------------------------------------------------------------------------
     // Constructors
     // -------------------------------------------------------------------------
@@ -93,6 +105,15 @@ public class Observation {
 
     public String getComment()           { return comment; }
     public void setComment(String c)     { this.comment = c; }
+
+    public Integer getStepCount()                 { return stepCount; }
+    public void setStepCount(Integer stepCount)   { this.stepCount = stepCount; }
+
+    public String getPhotoUri()                   { return photoUri; }
+    public void setPhotoUri(String photoUri)     { this.photoUri = photoUri; }
+
+    public Double getTemperatureCelsius()                       { return temperatureCelsius; }
+    public void setTemperatureCelsius(Double temperatureCelsius) { this.temperatureCelsius = temperatureCelsius; }
 
     @Override
     public String toString() {
