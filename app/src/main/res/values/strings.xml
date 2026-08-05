@@ -32,6 +32,7 @@
     <string name="hint_custom_field_2">Additional Note 2 (optional)</string>
     <string name="hint_obs_title">Observation Title *</string>
     <string name="hint_obs_time">Time (HH:mm) *</string>
+    <string name="hint_obs_time_auto">Time (auto — current time)</string>
     <string name="hint_obs_comment">Comment (optional)</string>
     <string name="hint_obs_step_count">Step Count (optional)</string>
     <string name="hint_obs_temp">Outdoor Temperature °C (optional)</string>

@@ -1,6 +1,5 @@
 package com.example.m_hikeapp;
 
-import android.app.TimePickerDialog;
 import android.os.Bundle;
 import android.widget.Toast;
 
@@ -75,7 +74,7 @@ public class AddObservationActivity extends AppCompatActivity {
         }
 
         setupToolbar();
-        setupTimePicker();
+        lockTimeToNow();     // G4: obs_time is auto-set to current time, not editable
         setupPhotoButton();
         setupSaveButton();
 
@@ -83,21 +82,35 @@ public class AddObservationActivity extends AppCompatActivity {
         if (observationId != -1L) {
             loadObservationForEditing(observationId);
         } else {
-            com.example.m_hikeapp.util.WeatherHelper.fetchDetailedWeather(this, new com.example.m_hikeapp.util.WeatherHelper.DetailedWeatherCallback() {
+            // G4: Fetch current + next-hour temperature from Open-Meteo on create mode
+            com.example.m_hikeapp.util.WeatherHelper.fetchDetailedWeather(this,
+                    new com.example.m_hikeapp.util.WeatherHelper.DetailedWeatherCallback() {
                 @Override
-                public void onSuccess(double temp, String condition, String forecastWarning) {
+                public void onSuccess(double currentTemp, double nextHourTemp,
+                                      String condition, String forecastWarning) {
                     runOnUiThread(() -> {
+                        // Pre-fill with current temperature (what hiker is experiencing now)
                         if (binding.editTextObsTemp.getText().toString().isEmpty()) {
-                            binding.editTextObsTemp.setText(String.valueOf(temp));
+                            binding.editTextObsTemp.setText(
+                                    String.format(Locale.getDefault(), "%.1f", currentTemp));
                         }
+                        // Show both current and next-hour prediction as a helper label
+                        String tempHint = String.format(Locale.getDefault(),
+                                "Now: %.1f°C  •  In 1h: %.1f°C", currentTemp, nextHourTemp);
+                        binding.textViewWeatherHint.setText(tempHint);
+                        binding.textViewWeatherHint.setVisibility(android.view.View.VISIBLE);
+
+                        // Show warning toast if rain/snow/storm expected next hour
                         if (!forecastWarning.isEmpty()) {
-                            Toast.makeText(AddObservationActivity.this, forecastWarning, Toast.LENGTH_LONG).show();
+                            Toast.makeText(AddObservationActivity.this,
+                                    forecastWarning, Toast.LENGTH_LONG).show();
                         }
                     });
                 }
 
                 @Override
                 public void onFailure(String errorMsg) {
+                    // Silently ignore — temperature field stays empty for manual entry
                 }
             });
         }
@@ -130,30 +143,26 @@ public class AddObservationActivity extends AppCompatActivity {
         binding.toolbar.setNavigationOnClickListener(v -> finish());
     }
 
-    private void setupTimePicker() {
-        // Default to current time
+    /**
+     * Locks obs_time to the current clock time and makes the field read-only.
+     *
+     * <p>Observations record <em>what is happening right now</em>, so the time
+     * should reflect the exact moment the user taps "Add Observation" — not an
+     * arbitrary time the user might accidentally change.</p>
+     */
+    private void lockTimeToNow() {
         Calendar now = Calendar.getInstance();
-        int hour   = now.get(Calendar.HOUR_OF_DAY);
-        int minute = now.get(Calendar.MINUTE);
-        selectedTime = String.format(Locale.US, "%02d:%02d", hour, minute);
+        selectedTime = String.format(Locale.US, "%02d:%02d",
+                now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE));
         binding.editTextObsTime.setText(selectedTime);
+        // Make completely non-interactive — no cursor, no click, no end icon
         binding.editTextObsTime.setFocusable(false);
-        binding.editTextObsTime.setOnClickListener(v -> showTimePicker());
-        binding.inputLayoutObsTime.setEndIconOnClickListener(v -> showTimePicker());
-    }
-
-    private void showTimePicker() {
-        Calendar now = Calendar.getInstance();
-        new TimePickerDialog(this,
-                (view, hourOfDay, minute) -> {
-                    selectedTime = String.format(Locale.US, "%02d:%02d", hourOfDay, minute);
-                    binding.editTextObsTime.setText(selectedTime);
-                    binding.inputLayoutObsTime.setError(null);
-                },
-                now.get(Calendar.HOUR_OF_DAY),
-                now.get(Calendar.MINUTE),
-                true // 24-hour format
-        ).show();
+        binding.editTextObsTime.setClickable(false);
+        binding.editTextObsTime.setCursorVisible(false);
+        binding.inputLayoutObsTime.setEndIconMode(
+                com.google.android.material.textfield.TextInputLayout.END_ICON_NONE);
+        binding.inputLayoutObsTime.setHint(
+                getString(R.string.hint_obs_time_auto));
     }
 
     private void setupSaveButton() {

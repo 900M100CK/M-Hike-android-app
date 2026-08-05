@@ -110,7 +110,17 @@ public class HikeAdapter extends ListAdapter<Hike, HikeAdapter.HikeViewHolder> {
                     String.format(java.util.Locale.getDefault(), "%.1f km", hike.getLengthKm()));
 
             // Parking status badge
-            binding.textParkingStatus.setText(hike.isParkingAvailable() ? "P" : "No P");
+            binding.textParkingStatus.setText(hike.isParkingAvailable() ? "P" : "No");
+
+            // Hike cover photo
+            if (hike.getPhotoUri() != null && !hike.getPhotoUri().isEmpty()) {
+                binding.imageHikeCover.setImageURI(android.net.Uri.parse(hike.getPhotoUri()));
+                binding.imageHikeCover.setPadding(0, 0, 0, 0);
+            } else {
+                binding.imageHikeCover.setImageResource(com.example.m_hikeapp.R.drawable.ic_hiking);
+                int pad = (int) (12 * binding.getRoot().getContext().getResources().getDisplayMetrics().density);
+                binding.imageHikeCover.setPadding(pad, pad, pad, pad);
+            }
 
             // Click on whole card -> detail view
             binding.getRoot().setOnClickListener(v -> listener.onHikeClick(hike));

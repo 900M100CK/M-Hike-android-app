@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.example.m_hikeapp"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.m_hikeapp"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -46,10 +46,10 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.3.2")
 
     // ── Mapbox Maps (G1) ──────────────────────────────────────────────────
+    // Note: com.mapbox.common is a transitive dependency of mapbox.maps —
+    // do NOT declare it manually; it must be resolved from the Mapbox Maven
+    // repo (declared in settings.gradle.kts) not Maven Central.
     implementation(libs.mapbox.maps)
-    implementation(libs.mapbox.search) {
-        exclude(group = "com.mapbox.common", module = "common")
-    }
     implementation(libs.play.services.location)
     implementation(libs.okhttp)
     implementation(libs.gson)

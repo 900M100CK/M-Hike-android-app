@@ -97,6 +97,20 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- G4: Weather hint — shows current + next-hour temperature after API fetch -->
+            <TextView
+                android:id="@+id/textViewWeatherHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="-4dp"
+                android:layout_marginBottom="12dp"
+                android:paddingHorizontal="4dp"
+                android:textSize="12sp"
+                android:textColor="?attr/colorPrimary"
+                android:fontFamily="sans-serif-medium"
+                android:visibility="gone"
+                android:text="" />
+
             <!-- Step Count -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/inputLayoutObsStepCount"

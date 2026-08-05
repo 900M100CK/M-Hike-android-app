@@ -22,8 +22,20 @@ public class WeatherHelper {
         void onFailure(String errorMsg);
     }
 
+    /**
+     * Callback for detailed weather used in AddObservationActivity.
+     *
+     * <p>Returns both the <b>current</b> temperature and the <b>predicted temperature
+     * 1 hour ahead</b>, sourced from the Open-Meteo hourly forecast.</p>
+     *
+     * @param currentTemp    Current temperature in °C.
+     * @param nextHourTemp   Predicted temperature 1 hour ahead in °C.
+     * @param condition      Human-readable condition string (e.g. "☀️ Clear sky / Sunny").
+     * @param forecastWarning Non-empty if next hour brings bad weather (code >= 51).
+     */
     public interface DetailedWeatherCallback {
-        void onSuccess(double currentTemp, String condition, String forecastWarning);
+        void onSuccess(double currentTemp, double nextHourTemp,
+                       String condition, String forecastWarning);
         void onFailure(String errorMsg);
     }
 
@@ -103,9 +115,15 @@ public class WeatherHelper {
                 .addOnFailureListener(e -> getDetailedWeatherForLocation(21.0285, 105.8542, callback));
     }
 
+    // G4: Requests current_weather + hourly temperature_2m & weathercode for 1 day
+    // so we can surface both current temperature and next-hour predicted temperature.
     private static void getDetailedWeatherForLocation(double lat, double lon, DetailedWeatherCallback callback) {
         String url = String.format(Locale.US,
-                "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current_weather=true&hourly=weathercode",
+                "https://api.open-meteo.com/v1/forecast"
+                        + "?latitude=%.4f&longitude=%.4f"
+                        + "&current_weather=true"
+                        + "&hourly=temperature_2m,weathercode"
+                        + "&forecast_days=1",
                 lat, lon);
 
         Request request = new Request.Builder().url(url).build();
@@ -122,30 +140,34 @@ public class WeatherHelper {
                         String responseData = response.body().string();
                         JSONObject json = new JSONObject(responseData);
                         JSONObject currentWeather = json.getJSONObject("current_weather");
-                        double temp = currentWeather.getDouble("temperature");
-                        int weatherCode = currentWeather.getInt("weathercode");
+                        double currentTemp  = currentWeather.getDouble("temperature");
+                        int    weatherCode  = currentWeather.getInt("weathercode");
+                        String currentTime  = currentWeather.getString("time"); // "YYYY-MM-DDTHH:00"
 
-                        String condition = translateWeatherCode(weatherCode);
-                        String warning = "";
+                        String condition    = translateWeatherCode(weatherCode);
+                        String warning      = "";
+                        double nextHourTemp = currentTemp; // safe fallback = same as current
 
                         try {
-                            String currentTime = currentWeather.getString("time");
                             JSONObject hourly = json.getJSONObject("hourly");
                             org.json.JSONArray timeArray = hourly.getJSONArray("time");
+                            org.json.JSONArray tempArray = hourly.getJSONArray("temperature_2m");
                             org.json.JSONArray codeArray = hourly.getJSONArray("weathercode");
 
                             for (int i = 0; i < timeArray.length() - 1; i++) {
                                 if (timeArray.getString(i).equals(currentTime)) {
-                                    int nextHourCode = codeArray.getInt(i + 1);
-                                    if (nextHourCode >= 51) {
-                                        warning = "Weather Warning (Next Hour): " + translateWeatherCode(nextHourCode);
+                                    // G4: read predicted temperature for the next hour slot
+                                    nextHourTemp = tempArray.getDouble(i + 1);
+                                    int nextCode = codeArray.getInt(i + 1);
+                                    if (nextCode >= 51) { // rain, snow, storm threshold
+                                        warning = "⚠️ Next hour: " + translateWeatherCode(nextCode);
                                     }
                                     break;
                                 }
                             }
                         } catch (Exception ignore) {}
 
-                        callback.onSuccess(temp, condition, warning);
+                        callback.onSuccess(currentTemp, nextHourTemp, condition, warning);
                     } catch (Exception e) {
                         callback.onFailure(e.getMessage());
                     }

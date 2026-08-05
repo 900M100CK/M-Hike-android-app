@@ -30,18 +30,36 @@
         android:minHeight="64dp"
         android:gravity="center_vertical">
 
-        <!-- Parking badge container (circular pill) -->
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/textParkingStatus"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:gravity="center"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:background="@drawable/bg_parking_badge"
-            android:layout_marginEnd="14dp"
-            tools:text="P" />
+        <!-- Cover Image Container (56x56dp rounded) -->
+        <FrameLayout
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="12dp">
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/imageHikeCover"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_hiking"
+                android:background="@drawable/bg_difficulty_badge"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Medium"
+                android:contentDescription="@string/hint_hike_name" />
+
+            <!-- Parking badge overlay pill (bottom-right of image) -->
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/textParkingStatus"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_gravity="bottom|end"
+                android:gravity="center"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/bg_parking_badge"
+                tools:text="P" />
+
+        </FrameLayout>
 
         <!-- Main information column -->
         <LinearLayout

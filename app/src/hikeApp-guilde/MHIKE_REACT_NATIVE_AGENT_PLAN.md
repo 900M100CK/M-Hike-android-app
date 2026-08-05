@@ -1,894 +1,1000 @@
 # M-Hike React Native App — Agent Briefing & Development Plan
 
-**Version:** 1.0  
-**Platform:** Cross-Platform (iOS + Android via React Native)  
-**Tech Stack:** React Native, Expo, SQLite (via expo-sqlite), TypeScript, React Navigation  
-**Status:** Coursework Implementation (COMP1786 Term 1)  
-**Note:** Replaces Xamarin/MAUI requirement; same features as Android version  
+**Version:** 2.0 (Full Feature Parity with Android Native)
+**Platform:** Cross-Platform iOS + Android via React Native
+**Tech Stack:** React Native, Expo (managed workflow), TypeScript, React Navigation v6, expo-sqlite (v4 schema), Zustand, Firebase Auth, Firebase Realtime Database, @rnmapbox/maps (Mapbox), Open-Meteo API, expo-camera, expo-location, expo-print, expo-sharing, react-native-paper (Material Design 3)
+**Status:** Coursework Implementation (COMP1786 Term 1)
+**Note:** Full feature parity with the Android native version — all features A through G (all 6 G sub-features), same data schema, same business logic, same UI/UX design language.
 
 ---
 
 ## 1. PROJECT CONTEXT
 
 ### Overview
-**M-Hike** React Native is the **cross-platform hybrid implementation** of the hiker management app. It provides feature parity with the Android native version (features a-d from coursework spec), running on both iOS and Android from a single codebase.
+**M-Hike** React Native is the cross-platform implementation of the hiker management app.
+Running on both iOS and Android from a single TypeScript codebase, it has **full feature parity**
+with the Android Java native version:
 
-### Strategic Rationale: React Native vs. Xamarin/MAUI
-- **Why React Native?**
-  - JavaScript/TypeScript ecosystem more accessible than C#
-  - Expo tooling simplifies development without native build overhead
-  - Smaller bundle size; faster hot reload
-  - Strong community and third-party packages for hike-related features (maps, camera, geolocation)
-  - Better dev experience for coursework (no native compilation required)
+- Plan and record detailed hike entries (name, location, date, difficulty, parking, length)
+- Capture real-time observations during hikes (title, time, comments, photos, temperature, step count)
+- Search and filter hike records locally with or without internet
+- **Local-first** — all core features work completely offline after login is cached
+- Sync data to Firebase Realtime Database
+- Display live weather via Open-Meteo API
+- Full G-feature pack: Maps, Photos, Duration, Weather, PDF Export, Ratings
 
 ### Target Users
-- Same as Android version: outdoor hikers aged 18-65
-- Extended reach: iPhone users (iOS 12+) + Android users (API 24+)
-- Community sharing potential on both platforms
+- Outdoor hikers aged 18–65, mixed technical proficiency
+- iOS (iPhone) and Android users — unified codebase
+- Users hiking locally (UK/Vietnam focus, but generalizable)
 
 ### Business Goals
-1. Demonstrate cross-platform development capability
-2. Reduce code duplication vs. separate Android/iOS implementations
-3. Deliver consistent UX across platforms
-4. Maintain local-first, no-internet-required model
+1. Full feature parity with Android native (all features A–G)
+2. Cross-platform delivery — one codebase, two platforms
+3. Local-first model — SQLite works completely offline
+4. Intuitive UI matching Material Design 3 Forest Green theme
+5. Shareable PDF hike reports
 
 ### Constraints & Requirements
-- **Technology**: React Native + Expo (not native Android/iOS code)
-- **Persistence**: SQLite via expo-sqlite (consistent with Android version)
-- **Feature Scope**: Replicate features a-d from coursework spec
-- **Code Sharing**: ≥ 95% JavaScript/TypeScript shared between iOS and Android
-- **Deliverables**: Working app (testable on both platforms via Expo) + demo + report
-- **Assessment deadline**: Arranged by partnerships (end of term)
+- **Technology**: React Native + Expo managed workflow (TypeScript)
+- **Persistence**: expo-sqlite — schema v4 matching Android Room
+- **Cloud**: Firebase Auth (email/password) + Firebase Realtime Database
+- **Maps**: @rnmapbox/maps (Mapbox) — NOT react-native-maps / Google Maps
+- **Weather**: Open-Meteo API (free, no API key required) via fetch
+- **Features**: A–G fully implemented (all 6 G sub-features)
+- **Min requirements**: iOS 12+ / Android API 26+
 
 ---
 
-## 2. TECH STACK & SETUP
+## 2. TECH STACK & DEPENDENCIES
 
-### Core Dependencies
+### package.json dependencies
 ```json
 {
-  "react-native": "^0.72.0",
-  "expo": "^50.0.0",
-  "react-navigation": "^6.x",
-  "@react-navigation/native": "^6.x",
-  "@react-navigation/bottom-tabs": "^6.x",
-  "@react-navigation/native-stack": "^6.x",
-  "expo-sqlite": "^13.x",
-  "expo-calendar": "^13.x",
-  "react-native-gesture-handler": "^2.x",
-  "react-native-reanimated": "^3.x",
-  "react-native-screens": "^3.x",
-  "zustand": "^4.x",
+  "react-native": "^0.74.0",
+  "expo": "^51.0.0",
   "typescript": "^5.x",
-  "@react-native-async-storage/async-storage": "^1.x"
+  "@react-navigation/native": "^6.x",
+  "@react-navigation/native-stack": "^6.x",
+  "expo-sqlite": "^14.x",
+  "zustand": "^4.x",
+  "@react-native-async-storage/async-storage": "^1.x",
+  "@rnmapbox/maps": "^10.x",
+  "expo-location": "^17.x",
+  "expo-image-picker": "^15.x",
+  "expo-file-system": "^17.x",
+  "expo-sharing": "^12.x",
+  "expo-print": "^13.x",
+  "@react-native-firebase/app": "^20.x",
+  "@react-native-firebase/auth": "^20.x",
+  "@react-native-firebase/database": "^20.x",
+  "react-native-ratings": "^8.x",
+  "react-native-paper": "^5.x",
+  "react-native-safe-area-context": "^4.x",
+  "react-native-screens": "^3.x",
+  "react-native-gesture-handler": "^2.x",
+  "react-native-reanimated": "^3.x"
 }
 ```
 
-### Project Structure
+### Project Directory Structure
 ```
-mhike-react-native/
-├── app.json                    # Expo configuration
-├── app.tsx                     # Entry point
+mhike-rn/
+├── App.tsx                         # Entry point + auth gate
+├── app.json                        # Expo config + Mapbox token
+├── tsconfig.json                   # strict: true
 ├── src/
-│   ├── screens/                # Screen components
-│   │   ├── HomeScreen.tsx
-│   │   ├── HikeListScreen.tsx
-│   │   ├── AddEditHikeScreen.tsx
-│   │   ├── HikeDetailScreen.tsx
-│   │   ├── SearchScreen.tsx
-│   │   ├── AddObservationScreen.tsx
-│   │   └── ObservationListScreen.tsx
-│   ├── components/             # Reusable UI components
-│   │   ├── HikeCard.tsx
-│   │   ├── ObservationCard.tsx
-│   │   ├── SearchFilter.tsx
-│   │   ├── FormField.tsx
-│   │   └── LoadingSpinner.tsx
-│   ├── database/               # SQLite database logic
-│   │   ├── db.ts
-│   │   ├── schema.ts
-│   │   └── queries.ts
-│   ├── store/                  # State management (Zustand)
-│   │   ├── hikeStore.ts
-│   │   └── observationStore.ts
-│   ├── types/                  # TypeScript interfaces
-│   │   ├── hike.ts
-│   │   └── observation.ts
-│   ├── utils/                  # Helper functions
-│   │   ├── validation.ts
-│   │   ├── dateTime.ts
-│   │   └── constants.ts
-│   ├── navigation/             # React Navigation config
-│   │   ├── RootNavigator.tsx
-│   │   └── types.ts
-│   └── theme/                  # Design tokens
-│       ├── colors.ts
-│       ├── typography.ts
-│       └── spacing.ts
-├── assets/                     # Images, icons
-├── package.json
-├── tsconfig.json
-└── README.md
+│   ├── screens/
+│   │   ├── LoginScreen.tsx         # Feature E: Firebase email/password
+│   │   ├── HikeListScreen.tsx      # Feature B: list + live search + weather banner
+│   │   ├── HikeDetailScreen.tsx    # Feature B+C: detail + observations + map + export
+│   │   ├── AddHikeScreen.tsx       # Feature A: create/edit + all G extras
+│   │   ├── AddObservationScreen.tsx # Feature C: observation form + weather auto-fill
+│   │   ├── HikeMapScreen.tsx       # G1: Mapbox full-screen map
+│   │   └── SearchFilterScreen.tsx  # Feature D: advanced multi-criteria filter
+│   ├── components/
+│   │   ├── HikeCard.tsx            # FlatList item: photo, name, badges, stars
+│   │   ├── ObservationCard.tsx     # Obs item: time, title, photo, temp, steps
+│   │   ├── DifficultyBadge.tsx     # Color-coded chip: Easy/Moderate/Hard/Expert
+│   │   ├── WeatherBanner.tsx       # Live weather strip on hike list
+│   │   ├── StarRating.tsx          # Trail rating 1–5 stars (react-native-ratings)
+│   │   ├── FormField.tsx           # TextInput + label + inline error text
+│   │   ├── PhotoCapture.tsx        # Camera button + photo preview
+│   │   └── EmptyState.tsx          # Illustration + message for empty lists
+│   ├── database/
+│   │   ├── db.ts                   # expo-sqlite init + migration chain (v1→v4)
+│   │   ├── schema.ts               # CREATE TABLE / ALTER TABLE SQL strings
+│   │   └── queries.ts              # All typed SQL query functions
+│   ├── store/
+│   │   ├── hikeStore.ts            # Zustand: hikes CRUD + firebase sync trigger
+│   │   └── observationStore.ts     # Zustand: observations CRUD
+│   ├── services/
+│   │   ├── firebaseAuth.ts         # Firebase Auth wrapper
+│   │   ├── firebaseSync.ts         # RTDB push/remove (best-effort)
+│   │   ├── weatherService.ts       # Open-Meteo API + translation + fallback
+│   │   └── pdfService.ts           # expo-print HTML template + expo-sharing
+│   ├── types/
+│   │   ├── hike.ts                 # Hike interface (21 fields)
+│   │   └── observation.ts          # Observation interface (8 fields)
+│   ├── utils/
+│   │   ├── durationCalculator.ts   # G3: Naismith rule (matches Android logic exactly)
+│   │   ├── validation.ts           # All form validation (name, date, length, etc.)
+│   │   ├── imageUtils.ts           # G2: photo capture, copy to permanent dir
+│   │   └── constants.ts            # Difficulty, weather condition, wind constants
+│   ├── navigation/
+│   │   ├── RootNavigator.tsx       # Auth-gated root stack
+│   │   └── types.ts                # NavigatorParamList types
+│   └── theme/
+│       ├── colors.ts               # Forest Green M3 palette
+│       ├── typography.ts           # Font scale
+│       └── spacing.ts              # 8dp grid (4, 8, 12, 16, 24, 32, 48)
+└── assets/
 ```
-
-### Development Environment
-- **IDE**: VS Code or Android Studio + Xcode (Expo handles the rest)
-- **Testing Device**: Expo Go app on physical device OR simulator
-- **Build & Deploy**: `expo start` for development; `expo build` for production
 
 ---
 
-## 3. FEATURE SPECIFICATIONS & RULES
+## 3. DATABASE SCHEMA (expo-sqlite v4 — identical to Android Room)
 
-### Feature A: Hike Data Entry (10% of coursework)
-
-**Rule 1: Form Validation & Required Fields**
-Same requirements as Android version:
-
-- **Required Fields** (show error if empty):
-  - Hike Name (e.g., "Snowdon", "Trosley Country Park")
-  - Location (text input)
-  - Date of hike (date picker)
-  - Parking available (radio buttons: Yes/No)
-  - Length of hike (numeric + unit: km/miles)
-  - Difficulty level (picker: Easy, Moderate, Hard, Expert)
-
-- **Optional Fields** (no error if empty):
-  - Description (text area, max 500 chars)
-  - Two+ custom fields (user's choice)
-
-**Rule 2: React Native Form UX**
-- Use controlled components (React state manages input values)
-- `TextInput` for name, location, description
-- `RNDateTimePicker` (via expo) for date selection
-- `Picker` or custom selector for difficulty
-- `SegmentedControl` or radio-style buttons for parking
-- Real-time input validation feedback (green/red text below field)
-- Save button disabled until all required fields filled
-
-**Rule 3: Confirmation Screen**
-- After form submission, show all entered data
-- Buttons: "Confirm & Save" | "Back to Edit"
-- Display in readable card format
-- Allow user to press back button on phone to return to form
-
-**Implementation Example**:
+### Schema SQL (database/schema.ts)
 ```typescript
-// types/hike.ts
+export const CREATE_HIKES_TABLE = `
+  CREATE TABLE IF NOT EXISTS hikes (
+    id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+    name                   TEXT NOT NULL,
+    location               TEXT NOT NULL,
+    date                   TEXT NOT NULL,
+    parking_available      INTEGER NOT NULL DEFAULT 0,
+    length_km              REAL NOT NULL,
+    difficulty             TEXT NOT NULL,
+    description            TEXT,
+    custom_field_1         TEXT,
+    custom_field_2         TEXT,
+    user_id                TEXT,
+    is_synced              INTEGER NOT NULL DEFAULT 0,
+    latitude               REAL,
+    longitude              REAL,
+    photo_uri              TEXT,
+    estimated_duration_min INTEGER NOT NULL DEFAULT 0,
+    actual_duration_min    INTEGER NOT NULL DEFAULT 0,
+    weather_condition      TEXT,
+    weather_notes          TEXT,
+    trail_rating           INTEGER,
+    trail_notes            TEXT
+  )
+`;
+
+export const CREATE_OBSERVATIONS_TABLE = `
+  CREATE TABLE IF NOT EXISTS observations (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    hike_id              INTEGER NOT NULL,
+    title                TEXT NOT NULL,
+    obs_time             TEXT NOT NULL,
+    comment              TEXT,
+    step_count           INTEGER,
+    photo_uri            TEXT,
+    temperature_celsius  REAL,
+    FOREIGN KEY(hike_id) REFERENCES hikes(id) ON DELETE CASCADE
+  )
+`;
+
+// Migration v3 -> v4 (adds extended observation fields)
+export const MIGRATION_3_4 = [
+  "ALTER TABLE observations ADD COLUMN step_count INTEGER",
+  "ALTER TABLE observations ADD COLUMN photo_uri TEXT",
+  "ALTER TABLE observations ADD COLUMN temperature_celsius REAL",
+];
+```
+
+### TypeScript Types (types/hike.ts)
+```typescript
+export type Difficulty = "Easy" | "Moderate" | "Hard" | "Expert";
+export type WeatherCondition =
+  | "Sunny" | "Partly Cloudy" | "Cloudy" | "Rain"
+  | "Snow" | "Wind" | "Fog" | "Storm";
+export type WindLevel = "Calm" | "Light" | "Moderate" | "Strong" | "Gale";
+
 export interface Hike {
-  id: string;
-  name: string;
-  location: string;
-  date: string; // ISO 8601
-  parkingAvailable: 'yes' | 'no';
-  lengthKm: number;
-  difficulty: 'easy' | 'moderate' | 'hard' | 'expert';
-  description?: string;
-  customField1?: string;
-  customField2?: string;
-  createdAt: string;
-  updatedAt: string;
+  id: number;
+  name: string;                         // Required, 1–100 chars
+  location: string;                     // Required
+  date: string;                         // Required, YYYY-MM-DD
+  parkingAvailable: boolean;            // Required
+  lengthKm: number;                     // Required, 0.1–500
+  difficulty: Difficulty;               // Required
+  description?: string;                 // Optional, max 500 chars
+  customField1?: string;                // Optional
+  customField2?: string;                // Optional
+  userId?: string;                      // Firebase UID
+  isSynced: boolean;                    // dirty flag
+  // G1
+  latitude?: number;                    // -90 to 90
+  longitude?: number;                   // -180 to 180
+  // G2
+  photoUri?: string;                    // permanent file:// URI
+  // G3
+  estimatedDurationMin: number;         // auto-computed, default 0
+  actualDurationMin: number;            // user-entered, default 0
+  // G4
+  weatherCondition?: WeatherCondition;
+  weatherNotes?: string;
+  // G6
+  trailRating?: number;                 // 1–5, null if not rated
+  trailNotes?: string;
 }
 
-// store/hikeStore.ts (Zustand)
-export const useHikeStore = create<HikeStore>((set) => ({
-  hikes: [],
-  addHike: async (hike: Hike) => {
-    const result = await db.addHike(hike);
-    set((state) => ({ hikes: [...state.hikes, hike] }));
-  },
-  // ... other methods
-}));
-```
-
----
-
-### Feature B: Data Persistence & Management (15% of coursework)
-
-**Rule 1: SQLite Database (via expo-sqlite)**
-```sql
-CREATE TABLE IF NOT EXISTS hikes (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  location TEXT NOT NULL,
-  date TEXT NOT NULL,
-  parking_available TEXT NOT NULL,
-  length_km REAL NOT NULL,
-  difficulty TEXT NOT NULL,
-  description TEXT,
-  custom_field_1 TEXT,
-  custom_field_2 TEXT,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS observations (
-  id TEXT PRIMARY KEY,
-  hike_id TEXT NOT NULL,
-  observation_text TEXT NOT NULL,
-  observation_time TEXT NOT NULL,
-  comments TEXT,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(hike_id) REFERENCES hikes(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_hike_date ON hikes(date);
-CREATE INDEX IF NOT EXISTS idx_observation_hike ON observations(hike_id);
-```
-
-**Rule 2: Database Layer Architecture**
-```typescript
-// database/db.ts
-import * as SQLite from 'expo-sqlite';
-
-const db = SQLite.openDatabase('mhike.db');
-
-export const initializeDatabase = async () => {
-  return new Promise<void>((resolve, reject) => {
-    db.transaction((tx) => {
-      tx.executeSql(CREATE_HIKES_TABLE);
-      tx.executeSql(CREATE_OBSERVATIONS_TABLE);
-      tx.executeSql(CREATE_INDEXES);
-    }, reject, () => resolve());
-  });
-};
-
-export const addHike = async (hike: Hike): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    db.transaction((tx) => {
-      tx.executeSql(
-        `INSERT INTO hikes 
-         (id, name, location, date, parking_available, length_km, difficulty, description, custom_field_1, custom_field_2)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          hike.id, hike.name, hike.location, hike.date, hike.parkingAvailable,
-          hike.lengthKm, hike.difficulty, hike.description, hike.customField1, hike.customField2
-        ],
-        () => resolve(),
-        (_, error) => reject(error)
-      );
-    });
-  });
-};
-
-// ... other CRUD operations
-```
-
-**Rule 3: State Management with Zustand**
-- Single source of truth for all hikes & observations
-- Persist to async storage for fast rehydration
-- Synchronize with SQLite on app startup
-
-**Rule 4: List Display (FlatList)**
-```typescript
-// screens/HikeListScreen.tsx
-import { FlatList, StyleSheet } from 'react-native';
-import { HikeCard } from '../components/HikeCard';
-
-export const HikeListScreen = () => {
-  const { hikes } = useHikeStore();
-
-  const handleDelete = (hikeId: string) => {
-    Alert.alert(
-      'Delete Hike?',
-      'This action cannot be undone.',
-      [
-        { text: 'Cancel', onPress: () => {}, style: 'cancel' },
-        { text: 'Delete', onPress: () => deleteHike(hikeId), style: 'destructive' }
-      ]
-    );
-  };
-
-  return (
-    <FlatList
-      data={hikes}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item }) => (
-        <HikeCard
-          hike={item}
-          onPress={() => navigation.navigate('HikeDetail', { hikeId: item.id })}
-          onDelete={() => handleDelete(item.id)}
-        />
-      )}
-      ListEmptyComponent={<EmptyState />}
-      contentContainerStyle={styles.listContent}
-    />
-  );
-};
-```
-
-**Rule 5: Error Handling**
-- Wrap all database operations in try-catch
-- Show user-friendly error messages via Toast or Alert
-- Log errors for debugging (use React Native's console or Sentry)
-
----
-
-### Feature C: Observations (15% of coursework)
-
-**Rule 1: Observation Data Model**
-```typescript
 // types/observation.ts
 export interface Observation {
-  id: string;
-  hikeId: string;
-  text: string; // Required
-  time: string; // ISO 8601, required (defaults to now)
-  comments?: string; // Optional
-  createdAt: string;
+  id: number;
+  hikeId: number;
+  title: string;                        // Required
+  obsTime: string;                      // Required, HH:mm
+  comment?: string;
+  stepCount?: number;
+  photoUri?: string;
+  temperatureCelsius?: number;
 }
 ```
 
-**Rule 2: Workflow**
-1. User navigates to hike detail screen
-2. Shows hike info + list of observations (if any)
-3. Taps "Add Observation" button
-4. Opens form with:
-   - Text input for observation (required)
-   - DateTime picker (defaults to current time)
-   - Text area for comments (optional)
-5. User submits → observation saved to DB
-6. Returns to hike detail screen
-7. Observation appears in list immediately
-
-**Rule 3: Observation List**
-- Display all observations for a hike
-- Show newest first (or oldest first, consistently)
-- Each card shows: time, observation text, comment preview
-- Tap to expand; swipe/long-press to edit/delete
-
 ---
 
-### Feature D: Search (10% of coursework)
+## 4. FEATURE SPECIFICATIONS
 
-**Rule 1: Basic Search (Minimum)**
+### Feature A: Hike Data Entry (10%)
+
+**Required Fields** (show error if empty/invalid):
+- Hike Name — TextInput, 1–100 chars
+- Location — TextInput, 1–100 chars
+- Date — DateTimePicker (defaults to today), stored YYYY-MM-DD, range 1900–2100
+- Parking — radio-style Yes/No buttons (SegmentedButtons from react-native-paper), no default
+- Length — numeric TextInput, 0.1–500 km
+- Difficulty — Picker dropdown (Easy / Moderate / Hard / Expert)
+
+**Optional Fields** (no error if empty):
+- Description — multiline TextInput, max 500 chars
+- Custom Field 1 & 2 — free-text in collapsible "Extras" section
+- GPS (G1) — "Use My Location" button → expo-location
+- Photo (G2) — "Take Photo" → expo-image-picker launchCameraAsync
+- Duration (G3) — estimated auto-calculated; actual manually entered
+- Weather (G4) — condition Picker + temperature TextInput + wind Picker + notes
+- Trail Rating (G6) — StarRating (1–5) + trail notes TextInput
+
+**Form UX Rules:**
+- Screen: AddHikeScreen, full ScrollView form
+- All inputs controlled (useState); onChangeText / onChange handlers
+- Inline error via FormField component (red text below input)
+- Save button: disabled until all required fields valid
+- Live estimated duration recalculates via useEffect on [lengthKm, difficulty]
+- Both Create mode (no hikeId param) and Edit mode (hikeId param passed via navigation)
+- Success: goBack() + show success toast/snackbar
+
+### Feature B: Data Persistence & Management (15%)
+
+**Query Functions (database/queries.ts):**
 ```typescript
-// screens/SearchScreen.tsx
-export const SearchScreen = () => {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<Hike[]>([]);
-  const { hikes } = useHikeStore();
+// Insert
+export const insertHike = async (db, hike) => { /* INSERT INTO hikes ... */ };
+export const insertObservation = async (db, obs) => { /* INSERT INTO observations ... */ };
 
-  const handleSearch = (text: string) => {
-    setQuery(text);
-    if (text.trim() === '') {
-      setResults([]);
-      return;
-    }
-    // Case-insensitive partial match
-    const filtered = hikes.filter((hike) =>
-      hike.name.toLowerCase().includes(text.toLowerCase())
-    );
-    setResults(filtered);
-  };
+// Update
+export const updateHike = async (db, hike) => { /* UPDATE hikes SET ... WHERE id = ? */ };
+export const updateObservation = async (db, obs) => { /* UPDATE observations SET ... WHERE id = ? */ };
+export const markHikeSynced = async (db, id) => { /* UPDATE hikes SET is_synced=1 WHERE id=? */ };
 
-  return (
-    <SafeAreaView>
-      <TextInput
-        placeholder="Search hikes by name..."
-        value={query}
-        onChangeText={handleSearch}
-        clearButtonMode="while-editing"
-      />
-      <FlatList
-        data={results}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <HikeCard hike={item} />}
-        ListEmptyComponent={
-          query ? <Text>No hikes found</Text> : <Text>Start typing to search</Text>
-        }
-      />
-    </SafeAreaView>
-  );
+// Delete
+export const deleteHikeById = async (db, id) => { /* DELETE FROM hikes WHERE id=? */ };
+export const deleteAllHikesByUser = async (db, uid) => { /* DELETE FROM hikes WHERE user_id=? */ };
+export const deleteObservationById = async (db, id) => { /* DELETE FROM observations WHERE id=? */ };
+
+// Read
+export const getAllHikesByUser = async (db, uid): Promise<Hike[]>;
+export const getHikeById = async (db, id): Promise<Hike | null>;
+export const getUnsyncedHikesByUser = async (db, uid): Promise<Hike[]>;
+export const getObservationsForHike = async (db, hikeId): Promise<Observation[]>;
+
+// Search & Filter
+export const searchHikesByName = async (db, query: string): Promise<Hike[]>;
+  // SQL: WHERE LOWER(name) LIKE LOWER('%query%') ORDER BY date DESC
+
+export const filterHikes = async (db, filters: FilterParams): Promise<Hike[]>;
+  // Dynamic SQL: WHERE 1=1 + optional AND clauses; positional ? binding (safe from injection)
+```
+
+**FilterParams interface:**
+```typescript
+interface FilterParams {
+  name?: string;
+  location?: string;
+  dateFrom?: string;     // YYYY-MM-DD
+  dateTo?: string;
+  minKm?: number;
+  maxKm?: number;
+  difficulty?: Difficulty;
+}
+```
+
+**List Display Rules:**
+- HikeListScreen: FlatList with keyExtractor={item => item.id.toString()}
+- HikeCard: photo thumbnail (64px rounded), name, location, date, DifficultyBadge, parking icon, StarRating compact, length km
+- EmptyState component: illustration + "No hikes yet — tap + to add your first hike"
+- Delete: Alert.alert confirmation before deleting
+
+**Threading:** expo-sqlite async API — all DB calls are async/await, never blocking JS thread
+
+### Feature C: Observations (15%)
+
+**AddObservationScreen:**
+- Required: title (TextInput), obsTime (DateTimePicker defaults to now HH:mm)
+- Optional: comment (multiline), stepCount (numeric TextInput), photo (PhotoCapture), temperatureCelsius (TextInput — auto-filled on mount)
+- Auto weather fill: call weatherService.fetchDetailedWeather() on mount → pre-fill temperatureCelsius
+- Falls back to Hanoi (21.0285, 105.8542) if no GPS permission
+- Save → observationStore.addObservation() → navigation.goBack()
+
+**Observation List in HikeDetailScreen:**
+- FlatList with scrollEnabled={false} (outer ScrollView handles scroll)
+- Ordered by obsTime ascending
+- ObservationCard: time, title, comment, step count badge, temperature, photo thumbnail
+- Edit/Delete via long-press actions or icon buttons
+
+**Cascade Delete:** SQLite FK ON DELETE CASCADE → deleting a hike auto-deletes all its observations
+
+### Feature D: Search & Filter (10%)
+
+**Basic Search (HikeListScreen):**
+- TextInput search bar with onChangeText handler (live)
+- Empty → loadHikes(); non-empty → searchHikesByName(query)
+- LOWER(name) LIKE LOWER('%query%') — case-insensitive partial match
+
+**Advanced Filter (SearchFilterScreen):**
+- Name (partial match), Location (partial match), Date From/To (DateTimePicker), Length Min/Max km, Difficulty (Picker)
+- "Apply Filters" → filterHikes(filters) → results FlatList
+- "Reset" button → clear all state + full list
+
+### Feature E: Firebase Authentication (5%)
+
+```typescript
+// services/firebaseAuth.ts
+import auth from "@react-native-firebase/auth";
+
+export const signIn = (email: string, password: string) =>
+  auth().signInWithEmailAndPassword(email, password);
+
+export const signUp = (email: string, password: string) =>
+  auth().createUserWithEmailAndPassword(email, password);
+
+export const signOut = () => auth().signOut();
+export const getCurrentUser = () => auth().currentUser;
+export const onAuthStateChanged = (cb) => auth().onAuthStateChanged(cb);
+```
+
+**Auth Gate (App.tsx):**
+```typescript
+const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
+const [loading, setLoading] = useState(true);
+useEffect(() => {
+  const unsub = auth().onAuthStateChanged(u => { setUser(u); setLoading(false); });
+  return unsub;
+}, []);
+// loading → ActivityIndicator; user null → LoginScreen; user set → HikeListScreen
+```
+
+**Sign-Out:** Header menu "Logout" → signOut() → auth state listener fires → LoginScreen
+
+### Feature F: Firebase Realtime Database Sync (5%)
+
+```typescript
+// services/firebaseSync.ts
+import database from "@react-native-firebase/database";
+
+export const pushHike = async (uid: string, hike: Hike) =>
+  database().ref(`users/${uid}/hikes/${hike.id}`).set(hike);
+
+export const removeHike = async (uid: string, hikeId: number) =>
+  database().ref(`users/${uid}/hikes/${hikeId}`).remove();
+
+export const removeAllHikes = async (uid: string) =>
+  database().ref(`users/${uid}/hikes`).remove();
+```
+
+- **Direction:** Local → Cloud (best-effort push; no pull)
+- **Path:** users/{uid}/hikes/{hikeId}
+- **After every local write:** call pushHike() in store; on success: markHikeSynced(db, id)
+- **On failure:** hike stays with isSynced=false; retry on next loadHikes() call
+- **Offline:** SQLite is always source of truth; Firebase failure never crashes app
+
+### Feature G1: Map View & GPS
+
+```typescript
+// screens/HikeMapScreen.tsx
+import MapboxGL from "@rnmapbox/maps";
+MapboxGL.setAccessToken(MAPBOX_ACCESS_TOKEN); // from app.json extra
+
+// Full-screen MapboxGL.MapView
+// Custom green marker (color "#386A1F") at hike.latitude, hike.longitude
+// Camera: zoomLevel=14, centerCoordinate=[longitude, latitude]
+// Animate camera on map ready
+// Guard: if !hike.latitude → Alert.alert("No location saved") + navigation.goBack()
+```
+
+**GPS Capture:**
+```typescript
+// utils/imageUtils.ts — GPS section
+import * as Location from "expo-location";
+
+export const captureCurrentLocation = async () => {
+  const { status } = await Location.requestForegroundPermissionsAsync();
+  if (status !== "granted") return null;
+  const loc = await Location.getCurrentPositionAsync({
+    accuracy: Location.Accuracy.Balanced,
+  });
+  return { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+};
+// Used in AddHikeScreen "Use My Location" button
+// Validate: lat -90 to 90, lon -180 to 180
+```
+
+### Feature G2: Photo Capture & Storage
+
+```typescript
+// components/PhotoCapture.tsx
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
+
+export const takePhoto = async (): Promise<string | null> => {
+  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  if (status !== "granted") return null;
+  const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+  if (result.canceled) return null;
+  // Copy to permanent storage (temp URIs expire on iOS)
+  const dir = FileSystem.documentDirectory + "photos/";
+  await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+  const dest = dir + "photo_" + Date.now() + ".jpg";
+  await FileSystem.copyAsync({ from: result.assets[0].uri, to: dest });
+  return dest; // permanent file:// URI stored in photo_uri column
 };
 ```
 
-**Rule 2: Advanced Search (Preferred)**
-- Multi-filter interface:
-  - Name (text input)
-  - Location (text input)
-  - Date range (date picker from/to)
-  - Length range (slider or number inputs)
-  - Difficulty (multi-select picker)
-- Combine filters with AND logic
-- Show number of results matching filters
-- Filter state persists during navigation
+- Both Hike and Observation have photoUri field
+- Display with `<Image source={{ uri: photoUri }}>`; fallback placeholder icon
+- Delete photo file on hike/observation delete (FileSystem.deleteAsync, ignore errors)
 
----
+### Feature G3: Duration Calculator
 
-### Feature G: Additional Features (10% of coursework)
-
-**Suggested Enhancements** (implement 1-2):
-- **Photo Capture**: Use `expo-camera` to take photos during hike; store as base64 in SQLite
-- **GPS Tracking**: Use `expo-location` to auto-capture hike start/end coordinates
-- **Map View**: Integrate `react-native-maps` to show hike locations on map
-- **Export PDF**: Use `react-native-pdf` to generate hike report
-- **Difficulty Badges**: Color-coded difficulty indicators (Easy=Green, Hard=Red, etc.)
-- **Hike Duration Calculator**: Calculate estimated vs. actual time
-
-**Rule**: Additional features should not break core functionality. Core features must work flawlessly first.
-
----
-
-## 4. STATE MANAGEMENT & ARCHITECTURE
-
-### Zustand Store Pattern
-**Why Zustand?**
-- Lightweight (no Provider boilerplate)
-- Simple API (familiar to Redux users)
-- Works seamlessly with React Native
-- Built-in async support
-
-**Example Store**:
 ```typescript
-// store/hikeStore.ts
-import { create } from 'zustand';
-import * as db from '../database/db';
+// utils/durationCalculator.ts
+const MINUTES_PER_KM = 12;
+const MAX_MINUTES = 720; // 12h cap — matches Android DurationCalculator
 
-interface HikeStore {
-  hikes: Hike[];
-  loading: boolean;
-  error: string | null;
-  loadHikes: () => Promise<void>;
-  addHike: (hike: Hike) => Promise<void>;
-  updateHike: (id: string, hike: Partial<Hike>) => Promise<void>;
-  deleteHike: (id: string) => Promise<void>;
-  deleteAllHikes: () => Promise<void>;
-}
+const MULTIPLIERS: Record<string, number> = {
+  Easy: 1.0, Moderate: 1.3, Hard: 1.6, Expert: 2.0,
+};
 
-export const useHikeStore = create<HikeStore>((set) => ({
-  hikes: [],
-  loading: false,
-  error: null,
+export const estimateMinutes = (lengthKm: number, difficulty: string): number => {
+  if (lengthKm <= 0) return 0;
+  const raw = lengthKm * MINUTES_PER_KM * (MULTIPLIERS[difficulty] ?? 1.0);
+  return Math.min(Math.round(raw), MAX_MINUTES);
+};
 
-  loadHikes: async () => {
-    set({ loading: true, error: null });
-    try {
-      const hikes = await db.getAllHikes();
-      set({ hikes, loading: false });
-    } catch (error) {
-      set({ error: error.message, loading: false });
-    }
-  },
+export const formatMinutes = (minutes: number): string => {
+  if (minutes <= 0) return "0m";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+};
 
-  addHike: async (hike: Hike) => {
-    try {
-      await db.addHike(hike);
-      set((state) => ({ hikes: [...state.hikes, hike] }));
-    } catch (error) {
-      set({ error: error.message });
-    }
-  },
-
-  // ... other methods
-}));
+export const getDurationDelta = (est: number, actual: number): string => {
+  if (actual <= 0) return "";
+  const diff = actual - est;
+  if (Math.abs(diff) < 10) return "On pace";
+  return diff > 0 ? "Slower than estimated" : "Faster than estimated";
+};
 ```
 
-### Initialization Flow
-1. App starts → `App.tsx` initializes database
-2. `useEffect` calls `useHikeStore.loadHikes()`
-3. All subsequent operations update Zustand store
-4. Zustand updates automatically trigger re-renders
+Live recalculation in AddHikeScreen:
+```typescript
+useEffect(() => {
+  const est = estimateMinutes(parseFloat(lengthKm) || 0, difficulty);
+  setEstimatedDuration(est);
+  // Auto-update hike form state: estimatedDurationMin = est
+}, [lengthKm, difficulty]);
+```
+
+### Feature G4: Weather Notes + Live Weather
+
+**Form section in AddHikeScreen:**
+- weatherCondition: Picker (Sunny / Partly Cloudy / Cloudy / Rain / Snow / Wind / Fog / Storm)
+- temperature: TextInput numeric, –60 to 60 °C
+- wind: Picker (Calm / Light / Moderate / Strong / Gale)
+- weatherNotes: multiline TextInput, max 500 chars
+
+**weatherService.ts:**
+```typescript
+const FALLBACK = { lat: 21.0285, lon: 105.8542 }; // Hanoi
+
+export const fetchCurrentWeather = async (lat: number, lon: number): Promise<string> => {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const w = json.current_weather;
+    return `${w.temperature.toFixed(1)}°C • ${translateCode(w.weathercode)}`;
+  } catch {
+    return "Unable to fetch weather";
+  }
+};
+
+export const fetchDetailedWeather = async (lat: number, lon: number) => {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+  const res = await fetch(url);
+  const json = await res.json();
+  return { temperature: json.current_weather.temperature as number };
+};
+
+const translateCode = (code: number): string => {
+  if (code === 0)              return "☀️ Clear sky / Sunny";
+  if ([1].includes(code))      return "🌤️ Mainly clear";
+  if ([2].includes(code))      return "⛅ Partly cloudy";
+  if ([3].includes(code))      return "☁️ Overcast / Cloudy";
+  if ([45,48].includes(code))  return "🌫️ Foggy";
+  if ([51,53,55].includes(code)) return "🌦️ Drizzle";
+  if ([61,63,65].includes(code)) return "🌧️ Rain";
+  if ([71,73,75].includes(code)) return "❄️ Snow";
+  if ([80,81,82].includes(code)) return "🌧️ Showers";
+  if ([95,96,99].includes(code)) return "🌩️ Thunderstorm";
+  return "🌬️ Breezy";
+};
+```
+
+**WeatherBanner component in HikeListScreen:**
+- Fetches on useFocusEffect (every time screen is focused)
+- Uses expo-location to get current coords; falls back to Hanoi
+- Displays: "27.3°C • ☀️ Clear sky / Sunny"
+
+**AddObservationScreen:** calls fetchDetailedWeather on mount → pre-fills temperatureCelsius
+
+### Feature G5: Export PDF & Share
+
+```typescript
+// services/pdfService.ts
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
+
+export const generateAndShareHikePdf = async (
+  hike: Hike,
+  observations: Observation[]
+): Promise<void> => {
+  const html = buildPdfHtml(hike, observations);
+  const { uri } = await Print.printToFileAsync({ html, base64: false });
+  await Sharing.shareAsync(uri, {
+    mimeType: "application/pdf",
+    dialogTitle: "Share Hike Report",
+  });
+};
+
+const buildPdfHtml = (hike: Hike, obs: Observation[]): string => `
+<html><body style="font-family:sans-serif;margin:40px">
+  <div style="background:#386A1F;color:#fff;padding:20px;border-radius:8px">
+    <h1 style="margin:0">M-Hike Report</h1>
+  </div>
+  <h2>${hike.name}</h2><p>${hike.location}</p>
+  <table style="width:100%;border-collapse:collapse">
+    <tr><td>Date</td><td>${hike.date}</td></tr>
+    <tr><td>Length</td><td>${hike.lengthKm} km</td></tr>
+    <tr><td>Difficulty</td><td>${hike.difficulty}</td></tr>
+    <tr><td>Parking</td><td>${hike.parkingAvailable ? "Yes" : "No"}</td></tr>
+    <tr><td>Duration (est)</td><td>${formatMinutes(hike.estimatedDurationMin)}</td></tr>
+    <tr><td>Duration (actual)</td><td>${hike.actualDurationMin > 0 ? formatMinutes(hike.actualDurationMin) : "N/A"}</td></tr>
+    <tr><td>Weather</td><td>${hike.weatherCondition ?? "Not recorded"}</td></tr>
+    <tr><td>Trail Rating</td><td>${hike.trailRating ? hike.trailRating + "/5" : "Not rated"}</td></tr>
+    <tr><td>GPS</td><td>${hike.latitude ? hike.latitude + ", " + hike.longitude : "Not recorded"}</td></tr>
+  </table>
+  ${hike.description ? `<p>${hike.description}</p>` : ""}
+  <h3>Observations (${obs.length})</h3>
+  ${obs.map(o => `<div><b>${o.obsTime} — ${o.title}</b><p>${o.comment ?? ""}</p>${o.temperatureCelsius ? `<p>${o.temperatureCelsius}°C</p>` : ""}</div>`).join("")}
+</body></html>`;
+```
+
+- "Export PDF" button in HikeDetailScreen (header action)
+- Show ActivityIndicator while generating
+- On complete: system share sheet (email, Drive, WhatsApp, etc.)
+
+### Feature G6: Trail Condition Ratings
+
+```typescript
+// components/StarRating.tsx
+import { Rating } from "react-native-ratings";
+
+const LABELS = ["Very Poor", "Poor", "Fair", "Good", "Excellent"];
+
+export const StarRating = ({ value, onChange, readonly = false }) => (
+  <>
+    <Rating
+      type="star"
+      ratingCount={5}
+      imageSize={32}
+      startingValue={value ?? 0}
+      onFinishRating={onChange}
+      readonly={readonly}
+      ratingColor="#386A1F"
+      tintColor="#FDFDF5"
+    />
+    {value ? <Text>{LABELS[value - 1]}</Text> : null}
+  </>
+);
+```
+
+- AddHikeScreen: StarRating (editable) + trailNotes TextInput
+- HikeDetailScreen: StarRating (readonly) + label + notes
+- HikeCard: compact star display next to difficulty badge
 
 ---
 
 ## 5. UI/UX DESIGN RULES
 
-### Design System: Material 3 + React Native Paper
+### Material Design 3 — Forest Green Theme
 
-**Color Palette** (same as Android version):
+**Colors (theme/colors.ts):**
 ```typescript
-// theme/colors.ts
 export const colors = {
-  primary: '#6750A4',      // Purple
-  secondary: '#625B71',    // Purple variant
-  tertiary: '#7D5260',     // Rose
-  error: '#B3261E',        // Red
-  background: '#FFFBFE',   // Off-white
-  surface: '#FEFAF7',      // Cream
-  onPrimary: '#FFFFFF',
-  onBackground: '#1C1B1F',
-  onSurface: '#1C1B1F',
+  primary:            "#386A1F",   // Forest Green
+  onPrimary:          "#FFFFFF",
+  primaryContainer:   "#B7F397",   // Light green
+  onPrimaryContainer: "#042100",
+  secondary:          "#55624C",
+  onSecondary:        "#FFFFFF",
+  secondaryContainer: "#D9E8CB",
+  background:         "#FDFDF5",
+  surface:            "#FDFDF5",
+  error:              "#BA1A1A",
+  onError:            "#FFFFFF",
+  outline:            "#73796D",
+  onBackground:       "#1C1B1F",
 };
 ```
 
-**Typography**:
+**DifficultyBadge Colors:**
+- Easy:     bg "#C8E6C9", text "#1B5E20"
+- Moderate: bg "#FFF9C4", text "#F57F17"
+- Hard:     bg "#FFE0B2", text "#E65100"
+- Expert:   bg "#FFCDD2", text "#B71C1C"
+
+**Typography (theme/typography.ts):**
 ```typescript
-// theme/typography.ts
 export const typography = {
-  displayLarge: { fontSize: 57, fontWeight: '400', lineHeight: 64 },
-  headlineLarge: { fontSize: 32, fontWeight: '700', lineHeight: 40 },
-  bodyLarge: { fontSize: 16, fontWeight: '400', lineHeight: 24 },
-  bodyMedium: { fontSize: 14, fontWeight: '500', lineHeight: 20 },
-  labelSmall: { fontSize: 12, fontWeight: '500', lineHeight: 16 },
+  headlineLarge:  { fontSize: 32, fontWeight: "700", lineHeight: 40 },
+  titleLarge:     { fontSize: 22, fontWeight: "600", lineHeight: 28 },
+  titleMedium:    { fontSize: 16, fontWeight: "600", lineHeight: 24 },
+  bodyLarge:      { fontSize: 16, fontWeight: "400", lineHeight: 24 },
+  bodyMedium:     { fontSize: 14, fontWeight: "400", lineHeight: 20 },
+  labelSmall:     { fontSize: 12, fontWeight: "500", lineHeight: 16 },
 };
 ```
 
-**Spacing Baseline**: 8dp (8, 16, 24, 32, 48)
+**Spacing:** 8dp grid: 4, 8, 12, 16, 24, 32, 48
 
-### Navigation Structure
-```
-RootNavigator (Stack)
-  ├─ HomeScreen (Tab Navigator)
-  │  ├─ HikeListTab
-  │  └─ SearchTab
-  ├─ HikeDetailScreen (Stack)
-  │  ├─ ObservationListScreen
-  │  └─ AddObservationScreen
-  └─ AddEditHikeScreen
-```
+**Touch Targets:** minHeight: 48 (iOS) / 56 (Android) for all interactive elements
 
-### Key Screen Layouts
+### Screen Inventory
 
-**1. Home Screen (Hike List Tab)**
-- Top: Title "My Hikes"
-- Center: FlatList of HikeCard components
-- Bottom: Floating Action Button (FAB) for "Add Hike"
-- Empty state: "No hikes. Tap + to create one."
+| Screen | Component | Navigation |
+|---|---|---|
+| Login | LoginScreen | Root stack (unauthenticated) |
+| Hike List | HikeListScreen | Root stack (authenticated, initial) |
+| Hike Detail | HikeDetailScreen | Pushed from HikeListScreen |
+| Add/Edit Hike | AddHikeScreen | Pushed (FAB or Edit button) |
+| Add/Edit Obs | AddObservationScreen | Pushed from HikeDetailScreen |
+| Map View | HikeMapScreen | Pushed from HikeDetailScreen (G1) |
+| Search Filter | SearchFilterScreen | Pushed from HikeListScreen |
 
-**2. Add/Edit Hike Screen**
-- ScrollView containing:
-  - FormField components (name, location, etc.)
-  - Date/Time picker (inline or modal)
-  - Picker for difficulty
-  - Radio buttons for parking
-  - Number input for length
-  - Save & Cancel buttons at bottom
-- Validation errors show below each field
+### Key Layout Patterns
 
-**3. Hike Detail Screen**
-- ScrollView with:
-  - Hike info cards (name, location, date, difficulty badge, parking icon, length)
-  - "Add Observation" button
-  - Observations list (FlatList)
-  - Observation count badge
-  - Edit/Delete buttons for hike
+**HikeListScreen:**
+- Header: "M-Hike" title (left) + logout icon (right)
+- WeatherBanner below header
+- SearchBar (live search)
+- Row: Filter button (outlined) + Delete All button (outlined error)
+- FlatList of HikeCard
+- EmptyState if empty
+- FAB bottom-right: "+" → AddHikeScreen
 
-**4. Search Screen**
-- SearchBar (collapsible filters below)
-- Filter options: Name, Location, Date range, Length range, Difficulty
-- Results list or empty state
-- Tap result to navigate to HikeDetail
+**HikeCard:**
+- Card with shadow/elevation
+- Left: 64×64px rounded photo (Image or placeholder icon)
+- Right: name (titleLarge), location + date (bodyMedium muted)
+- Bottom row: DifficultyBadge + parking icon + StarRating compact + length km text
+- Trailing: delete icon button
+- Touchable: navigate to HikeDetailScreen
 
-### Component Library
-- **React Native Paper**: Pre-built Material 3 components
-  - `Button`, `TextInput`, `Card`, `Chip`, `Badge`, `Snackbar`
-- **Custom Components**: Wrap Paper components for consistency
-  - `FormField`: TextInput + label + error message
-  - `HikeCard`: Hike info with action buttons
-  - `ObservationCard`: Observation display
-  - `DifficultyBadge`: Color-coded difficulty
+**HikeDetailScreen:**
+- ScrollView with sections:
+  1. Info card (name, location, date, parking, length, difficulty)
+  2. "View Map" (outlined) + "Edit Hike" (outlined) buttons
+  3. Photo card (if photoUri)
+  4. Duration card (estimated + actual + delta)
+  5. Weather card (condition + notes)
+  6. Trail Rating card (StarRating readonly + label + notes)
+  7. Observations header + "Add Observation" button
+  8. FlatList observations (scrollEnabled=false)
+  9. EmptyState if no observations
+
+**AddHikeScreen:**
+- ScrollView form:
+  - Required section: name, location, date picker, parking radio, length, difficulty
+  - Optional: description, custom fields (collapsible)
+  - G1: "Use My Location" button + lat/lng read-only text
+  - G2: PhotoCapture component (button + preview)
+  - G3: estimated duration label (live) + actual duration input
+  - G4: condition picker, temperature, wind picker, notes
+  - G6: StarRating (editable) + trail notes
+  - Footer: "Save Hike" (filled primary) / "Update Hike" (edit mode) + Cancel
+
+### Empty / Error / Loading States
+- Empty hike list: EmptyState component — illustration + "No hikes yet — tap + to add your first hike"
+- No GPS for map: Alert.alert + goBack()
+- No photo: placeholder icon (camera outline)
+- PDF generating: ActivityIndicator + disabled export button
+- Weather unavailable: "Unable to fetch weather" banner text
+- Invalid hikeId from navigation: Alert + goBack()
 
 ### Accessibility
-- All interactive elements: minHeight 48dp (Apple) / 56dp (Google)
-- Descriptive `accessible` prop and `accessibilityLabel` on all buttons/icons
-- Color not sole indicator (use icons + text for status)
-- Minimum text contrast: 4.5:1
-
-### Responsiveness
-- Use Dimensions API or ResponsiveDesign library
-- Portrait & landscape support
-- Adapt font sizes and spacing for different screen sizes (small phone vs. tablet)
+- All interactive elements: accessibilityLabel + accessibilityRole
+- Touch targets: minHeight 48 (iOS) / 56 (Android)
+- Color never sole status indicator — icon + text alongside colored badges
+- Text contrast ≥ 4.5:1
+- SafeAreaView wrapping on all screens (react-native-safe-area-context)
+- KeyboardAvoidingView on all form screens (behavior "padding" on iOS)
 
 ---
 
-## 6. CODE QUALITY RULES
+## 6. STATE MANAGEMENT (Zustand)
 
-### TypeScript Strict Mode
-- Enable strict mode in `tsconfig.json`
-- No `any` types; use proper interfaces
-- Type all props, state, and returns
-
-### Naming Conventions
-- **Components**: PascalCase (e.g., `HikeListScreen`, `HikeCard`)
-- **Functions**: camelCase (e.g., `handleSaveHike`, `validateInput`)
-- **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_HIKE_NAME_LENGTH`)
-- **Variables**: camelCase (e.g., `hikeList`, `isLoading`)
-- **Files**: kebab-case or PascalCase matching content (e.g., `HikeCard.tsx`, `hike.store.ts`)
-
-### Code Structure
-- Functional components with hooks (no class components)
-- Custom hooks for complex logic (e.g., `useHikeForm`)
-- Extract long functions into utilities
-- Keep components under 300 lines
-- Props interfaces at top of file
-
-**Example Component**:
 ```typescript
-// components/HikeCard.tsx
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Card, Button } from 'react-native-paper';
-import { Hike } from '../types/hike';
+// store/hikeStore.ts
+import { create } from "zustand";
 
-interface HikeCardProps {
-  hike: Hike;
-  onPress: () => void;
-  onDelete: () => void;
+interface HikeStore {
+  hikes: Hike[];
+  loading: boolean;
+  error: string | null;
+  loadHikes: (userId: string) => Promise<void>;
+  addHike: (hike: Omit<Hike, "id">) => Promise<number>;
+  updateHike: (hike: Hike) => Promise<void>;
+  deleteHike: (id: number) => Promise<void>;
+  deleteAllHikes: (userId: string) => Promise<void>;
 }
 
-export const HikeCard: React.FC<HikeCardProps> = ({ hike, onPress, onDelete }) => {
-  return (
-    <Card style={styles.card} onPress={onPress}>
-      <Card.Content>
-        <Text style={styles.title}>{hike.name}</Text>
-        <Text style={styles.subtitle}>{hike.location}</Text>
-        <View style={styles.meta}>
-          <Text>{hike.date}</Text>
-          <DifficultyBadge difficulty={hike.difficulty} />
-          <Text>{hike.lengthKm} km</Text>
-        </View>
-      </Card.Content>
-      <Card.Actions>
-        <Button onPress={onDelete}>Delete</Button>
-      </Card.Actions>
-    </Card>
-  );
-};
+export const useHikeStore = create<HikeStore>((set, get) => ({
+  hikes: [],
+  loading: false,
+  error: null,
 
-const styles = StyleSheet.create({
-  card: { marginBottom: 12, marginHorizontal: 16 },
-  title: { fontSize: 18, fontWeight: '600', marginBottom: 4 },
-  subtitle: { fontSize: 14, color: '#666', marginBottom: 8 },
-  meta: { flexDirection: 'row', gap: 8, marginTop: 8 },
-});
+  loadHikes: async (userId) => {
+    set({ loading: true, error: null });
+    try {
+      const db = await getDatabase();
+      const hikes = await getAllHikesByUser(db, userId);
+      // Retry unsynced hikes
+      const unsynced = hikes.filter(h => !h.isSynced);
+      unsynced.forEach(h =>
+        pushHike(userId, h).then(() => markHikeSynced(db, h.id)).catch(() => {})
+      );
+      set({ hikes, loading: false });
+    } catch (e: any) {
+      set({ error: e.message, loading: false });
+    }
+  },
+
+  addHike: async (hike) => {
+    const db = await getDatabase();
+    const userId = getCurrentUser()?.uid ?? null;
+    const saved = { ...hike, userId, isSynced: false };
+    const id = await insertHike(db, saved);
+    const withId = { ...saved, id };
+    if (userId) {
+      pushHike(userId, withId)
+        .then(() => markHikeSynced(db, id))
+        .catch(() => {});
+    }
+    set(s => ({ hikes: [withId, ...s.hikes] }));
+    return id;
+  },
+
+  // updateHike, deleteHike, deleteAllHikes follow same pattern
+}));
 ```
-
-### Comment Guidelines
-- Comments explain "why", not "what"
-- Comment complex algorithms, workarounds, non-obvious decisions
-- Avoid redundant comments
 
 ---
 
-## 7. TESTING STRATEGY
+## 7. CODE QUALITY RULES
+
+- **TypeScript strict mode** — no `any` types; proper interfaces everywhere
+- **Naming:** PascalCase components, camelCase functions/hooks, UPPER_SNAKE_CASE constants
+- **Architecture:** Screens = UI + navigation only; business logic in services/ + utils/; DB only in database/queries.ts
+- **Comments:** Explain WHY; TSDoc for all exported functions; tag G-features: `// G1:`, `// G2:`
+- **Error handling:** all async wrapped in try-catch; user-friendly Alert messages; never crash on Firebase failure
+- **No inline styles** — use StyleSheet.create or theme constants
+- **SafeAreaView + KeyboardAvoidingView** — on all screens (iOS notch/home indicator handling)
+
+---
+
+## 8. TESTING
 
 ### Unit Tests (Jest)
 ```typescript
-// __tests__/validation.test.ts
-import { validateHikeInput } from '../utils/validation';
-
-describe('Hike Validation', () => {
-  it('should reject empty name', () => {
-    const result = validateHikeInput({ name: '', location: 'Test', ... });
-    expect(result.errors).toContain('Name is required');
-  });
-
-  it('should accept valid input', () => {
-    const result = validateHikeInput({ name: 'Test', location: 'Test', ... });
-    expect(result.valid).toBe(true);
-  });
-});
+// durationCalculator.test.ts
+test("moderate 10km = 156 min", () => expect(estimateMinutes(10, "Moderate")).toBe(156));
+test("expert 30km capped at 720", () => expect(estimateMinutes(30, "Expert")).toBe(720));
+test("format 156 min = 2h 36m", () => expect(formatMinutes(156)).toBe("2h 36m"));
 ```
-
-### Integration Tests (Detox or E2E)
-- Test user workflows: Add hike → View → Search → Delete
-- Verify persistence across app restart
-- Test error scenarios
 
 ### Manual Testing Checklist
-- [ ] Add hike → appears in list
+- [ ] Login valid credentials → hike list
+- [ ] Login wrong password → error message
+- [ ] Add hike all required fields → appears in list
+- [ ] Add hike empty required field → inline error shown
 - [ ] Edit hike → changes persist
-- [ ] Delete hike → removed + observations deleted
-- [ ] Add observation → appears under hike
-- [ ] Search works (partial match, case-insensitive)
-- [ ] Offline functionality (no network required)
-- [ ] App survives foreground/background transitions
-- [ ] Rotate device → layout adapts
-- [ ] Error handling (invalid input, DB errors)
-
-### Performance Testing
-- **FlatList**: Render 100+ hikes smoothly (check with PerformanceMonitor)
-- **Search**: < 500ms to filter 100 hikes
-- **Memory**: No memory leaks (use React Native Performance Monitor)
-
----
-
-## 8. PLATFORM-SPECIFIC CONSIDERATIONS
-
-### iOS vs. Android Differences
-**Handled by React Native automatically**:
-- Button styling (iOS: text-based; Android: elevated)
-- Navigation back button (iOS: automatic; Android: hardware button)
-- DatePicker UI (iOS: wheel picker; Android: dialog picker)
-
-**Manual adjustments needed**:
-- Safe area insets (notches, home indicator) → use `useSafeAreaInsets()`
-- Keyboard behavior → adjust scroll behavior per platform
-- StatusBar color → set via `StatusBar.setBarStyle()`
-
-### Build Configuration (app.json)
-```json
-{
-  "expo": {
-    "name": "M-Hike",
-    "slug": "mhike",
-    "version": "1.0.0",
-    "platforms": ["ios", "android"],
-    "ios": { "bundleIdentifier": "com.example.mhike" },
-    "android": { "package": "com.example.mhike" }
-  }
-}
-```
-
-### Testing on Real Devices
-- **Via Expo Go App**: Scan QR code from `expo start`
-- **Android**: USB debugging enabled; run `expo start --android`
-- **iOS**: iPhone with Expo Go app; LAN connection
+- [ ] Delete hike → removed + observations cascade deleted
+- [ ] Delete All → empty state shown
+- [ ] Add observation → visible in hike detail
+- [ ] Edit/delete observation works
+- [ ] Basic search (partial match, case-insensitive)
+- [ ] Advanced filter (location + date range + difficulty)
+- [ ] "Use My Location" → GPS saved
+- [ ] View Map → Mapbox marker at hike coords
+- [ ] Take photo → thumbnail in list + detail
+- [ ] Duration live recalculates on length/difficulty change
+- [ ] Export PDF → share sheet + readable PDF
+- [ ] Weather banner shows live data
+- [ ] Observation temperature auto-filled
+- [ ] Kill + restart → SQLite data intact
+- [ ] Offline: CRUD works without network
+- [ ] Logout → auth screen; re-login shows same data
+- [ ] iOS: content not hidden behind notch/home indicator
+- [ ] Android: keyboard doesn't cover form inputs
 
 ---
 
-## 9. DELIVERABLES CHECKLIST
+## 9. COMMON PITFALLS TO AVOID
 
-### Code Deliverable
-- [ ] Complete React Native source code (TypeScript)
-- [ ] `README.md` with:
-  - Setup instructions (Node.js, Expo CLI)
-  - Database schema explanation
-  - How to run app (Expo Go or build)
-  - Key architectural decisions
-  - Any third-party packages used
-- [ ] `package.json` with all dependencies locked
-- [ ] `.env` example (if applicable)
-- [ ] No hardcoded credentials or API keys
-
-### Cross-Platform Testing
-- [ ] Tested on Android device/simulator
-- [ ] Tested on iOS device/simulator (if possible)
-- [ ] Verified layout adaptation for different screen sizes
-- [ ] Performance acceptable on both platforms
-
-### Demo Video (15 minutes)
-- [ ] Show project structure & architecture
-- [ ] Demonstrate features a-d on both platforms:
-  - Add hike (form validation on Android and iOS)
-  - View/edit/delete hike
-  - Add observations
-  - Search functionality
-- [ ] Show offline persistence (kill app, restart, data remains)
-- [ ] Demonstrate additional feature(s)
-- [ ] Walk through key code sections (store, database, screens)
-- [ ] Explain design decisions (why Zustand, why this component structure, etc.)
-
-### Report (Same as Android)
-- **Section 1 (2%)**: Feature checklist
-- **Section 2 (2%)**: Screenshots from iOS and Android
-- **Section 3 (4%)**: Reflection on cross-platform development challenges
-- **Section 4 (8%)**: Evaluation of app(s) with cross-platform considerations
-- **Section 5 (2%)**: Code listings (focus on shared JavaScript/TypeScript)
+1. **Async SQLite** — always use async expo-sqlite API; never await inside render
+2. **Photo URI expiry** — copy to FileSystem.documentDirectory before storing; temp URIs expire on iOS
+3. **Mapbox token** — set in app.json under `expo.extra.mapboxToken`; won't render without it
+4. **FlatList inside ScrollView** — set `scrollEnabled={false}` on inner FlatList for observations
+5. **Firebase auth state race** — use onAuthStateChanged listener; never read currentUser synchronously at startup
+6. **Weather fallback** — always default to Hanoi (21.0285, 105.8542) when expo-location denied
+7. **Duration not recalculating** — useEffect deps must include BOTH lengthKm AND difficulty state
+8. **Firebase offline** — SQLite is source of truth; Firebase error must never crash (try-catch + isSynced retry)
+9. **KeyExtractor on FlatList** — use `item => item.id.toString()` for numeric IDs
+10. **SafeAreaView** — wrap all screens with SafeAreaView from react-native-safe-area-context
 
 ---
 
-## 10. COMMON PITFALLS TO AVOID
+## 10. DEVELOPMENT WORKFLOW
 
-1. **Database Initialization Race Conditions**
-   - Always await `initializeDatabase()` before loading hikes
-   - Check for initialization flag before operations
+### Phase 1: Foundation (Week 1–2)
+- [ ] Expo project init (TypeScript template)
+- [ ] expo-sqlite: db.ts init + schema.ts + migration chain v1→v4
+- [ ] TypeScript types: Hike + Observation interfaces + FilterParams
+- [ ] Zustand stores scaffold (hikeStore, observationStore)
+- [ ] theme/: colors.ts, typography.ts, spacing.ts
 
-2. **UI Not Updating After DB Operations**
-   - Remember to update Zustand store after DB changes
-   - Don't rely on manual state updates
+### Phase 2: Features A & B (Week 3–4)
+- [ ] AddHikeScreen: form + validation (create mode)
+- [ ] HikeListScreen: FlatList + HikeCard + FAB + EmptyState
+- [ ] HikeDetailScreen: info card + placeholder sections
+- [ ] Edit hike (hikeId param) + delete flow
 
-3. **Memory Leaks from Event Listeners**
-   - Unsubscribe from navigation listeners in cleanup functions
-   - Cancel async tasks on unmount
+### Phase 3: Features C & D (Week 5–6)
+- [ ] AddObservationScreen: form + time picker
+- [ ] ObservationCard + FlatList in HikeDetailScreen
+- [ ] Basic search in HikeListScreen
+- [ ] SearchFilterScreen: advanced filter
 
-4. **FlatList Performance Issues**
-   - Provide stable `keyExtractor`
-   - Use `useMemo` for derived data
-   - Implement `removeClippedSubviews` for long lists
+### Phase 4: Features E & F (Week 6–7)
+- [ ] LoginScreen: email/password Firebase Auth
+- [ ] Auth gate in App.tsx (onAuthStateChanged)
+- [ ] firebaseSync.ts: pushHike, removeHike, removeAllHikes
+- [ ] User-scoped queries; retry unsynced on load
 
-5. **Platform Differences Not Handled**
-   - Test thoroughly on both iOS and Android
-   - Use Platform.select() for platform-specific code
-   - SafeAreaView for notch/home indicator
+### Phase 5: Feature G Pack (Week 7–8)
+- [ ] G1: HikeMapScreen (Mapbox) + GPS capture (expo-location)
+- [ ] G2: PhotoCapture component (expo-image-picker) on Hike + Observation
+- [ ] G3: durationCalculator.ts + live useEffect in AddHikeScreen
+- [ ] G4: weatherService.ts (Open-Meteo) + WeatherBanner + form section
+- [ ] G5: pdfService.ts (expo-print + expo-sharing)
+- [ ] G6: StarRating component (react-native-ratings)
 
-6. **Ignoring TypeScript Errors**
-   - Strict mode enabled = type safety
-   - Don't bypass with `any` or `@ts-ignore`
-   - Proper types catch bugs early
-
-7. **Poor Error Handling**
-   - Wrap DB operations in try-catch
-   - Show user-friendly messages
-   - Log errors for debugging
-
-8. **Incomplete Features**
-   - Finish core features completely before polish
-   - Test thoroughly before moving on
-
----
-
-## 11. DEVELOPMENT WORKFLOW
-
-### Phase 1: Setup & Database (Week 1-2)
-- [ ] Expo project initialized
-- [ ] SQLite database schema & queries
-- [ ] Zustand store structure
-- [ ] TypeScript types defined
-
-### Phase 2: Feature A & B (Week 3-4)
-- [ ] AddEditHikeScreen UI
-- [ ] Form validation logic
-- [ ] HikeListScreen with FlatList
-- [ ] Edit/delete operations
-
-### Phase 3: Feature C (Week 5)
-- [ ] AddObservationScreen
-- [ ] ObservationListScreen
-- [ ] Link observations to hikes
-- [ ] Display observations under hike detail
-
-### Phase 4: Feature D (Week 6)
-- [ ] SearchScreen UI
-- [ ] Basic search implementation
-- [ ] Advanced search filters
-- [ ] Test search performance
-
-### Phase 5: Polish & Feature G (Week 7)
+### Phase 6: Polish & Demo (Week 8)
+- [ ] Forest Green theme applied consistently
+- [ ] Accessibility audit (labels, touch targets, contrast)
 - [ ] Cross-platform testing (iOS + Android)
-- [ ] Bug fixes
-- [ ] UI/UX refinement
-- [ ] Implement additional feature(s)
-- [ ] Performance optimization
-
-### Phase 6: Demo & Report (Week 8)
-- [ ] Build Expo APK/IPA for demo
-- [ ] Record 15-minute video demonstration
-- [ ] Write comprehensive report
-- [ ] Prepare for Q&A
+- [ ] 15-minute demo video
+- [ ] Comprehensive report
 
 ---
 
-## 12. AI AGENT INSTRUCTIONS
+## 11. AI AGENT INSTRUCTIONS
 
-When generating supporting documents (architecture specs, UI mockups, code templates, etc.) from this brief:
+When generating code or documentation from this brief:
 
-1. **Follow React Native patterns** — hooks, functional components, TypeScript strict
-2. **Provide complete implementations** — not pseudo-code or placeholders
-3. **Include error handling** — every async operation wrapped in try-catch
-4. **Show platform considerations** — if iOS/Android differences exist, handle them
-5. **Reference Material 3** — use specified colors, typography, spacing
-6. **Performance-conscious** — avoid unnecessary re-renders, memoize when needed
-7. **Accessibility-first** — include accessible props, touch targets, color + icons
-8. **TypeScript strict mode** — no `any` types, proper interfaces
-9. **Testing mindset** — write code that's testable and debuggable
-10. **Link to official resources** — React Native Docs, Expo Docs, React Navigation
+1. **React Native TypeScript ONLY** — no Java, no Kotlin, no Swift
+2. **expo-sqlite async API** — no synchronous DB calls; always async/await
+3. **Zustand** — single source of truth; no Redux, no plain Context for data
+4. **@react-native-firebase** — use RN Firebase SDK; NOT the web Firebase SDK
+5. **@rnmapbox/maps** — Mapbox ONLY; NOT react-native-maps / Google Maps
+6. **Open-Meteo** (free, no API key) — NOT OpenWeatherMap or any paid service
+7. **expo-print + expo-sharing** — for PDF; no third-party PDF library
+8. **expo-image-picker** — for camera; copy to FileSystem.documentDirectory for persistence
+9. **Forest Green M3** — exact hex #386A1F; no generic colors
+10. **G-feature tags** — comment `// G1:`, `// G2:` etc. in code
+11. **Same schema as Android Room** — 21 hike fields + 8 observation fields; same column names
+12. **Naismith formula** — Easy x1.0, Moderate x1.3, Hard x1.6, Expert x2.0; base 12 min/km; cap 720 min
+13. **TypeScript strict** — no `any`; proper interfaces for all data shapes
+14. **Complete implementations** — real working code, not pseudo-code
+
+---
+
+## 12. DELIVERABLES CHECKLIST
+
+### Code
+- [ ] Expo React Native project (TypeScript)
+- [ ] package.json with all dependencies
+- [ ] expo-sqlite schema v4 + migration chain
+- [ ] All screens + components
+- [ ] Firebase Auth + RTDB integration
+- [ ] Mapbox Maps integration
+- [ ] Open-Meteo weather integration
+- [ ] PDF export (expo-print + expo-sharing)
+- [ ] google-services.json / GoogleService-Info.plist excluded from git (.gitignore)
+- [ ] README.md with setup instructions (Mapbox token, Firebase config)
+
+### Testing
+- [ ] Manual testing checklist completed (Section 8)
+- [ ] Tested on Android device/emulator (API 26+)
+- [ ] Tested on iOS device/simulator (iOS 12+)
+
+### Demo Video (15 min)
+- [ ] Project structure + architecture walkthrough
+- [ ] Features A–D (CRUD, validation, observations, search)
+- [ ] Feature E login/logout flow
+- [ ] Feature F Firebase sync
+- [ ] Feature G pack (map, photo, duration, weather, PDF, rating)
+- [ ] Offline persistence demo
+- [ ] Code walkthrough: db.ts, hikeStore.ts, weatherService.ts, pdfService.ts, durationCalculator.ts
+- [ ] Design decisions explained (why Zustand, why expo-sqlite, why Mapbox, why Open-Meteo)
+
+### Report
+- Section 1 (2%): Feature checklist with iOS + Android screenshots
+- Section 2 (2%): Annotated screenshots of all 7 screens (both platforms)
+- Section 3 (4%): Reflection 350 words (cross-platform challenges, trade-offs)
+- Section 4 (8%): Evaluation 700–1000 words (HCI, security, screen sizes, deployment, cross-platform vs native)
+- Section 5 (2%): Code listings (db.ts, hikeStore.ts, weatherService.ts)
 
 ---
 
 ## 13. REFERENCES & RESOURCES
 
-- React Native Docs: https://reactnative.dev/
 - Expo Docs: https://docs.expo.dev/
-- React Navigation: https://reactnavigation.org/
 - expo-sqlite: https://docs.expo.dev/versions/latest/sdk/sqlite/
-- React Native Paper: https://callstack.github.io/react-native-paper/
+- expo-location: https://docs.expo.dev/versions/latest/sdk/location/
+- expo-image-picker: https://docs.expo.dev/versions/latest/sdk/image-picker/
+- expo-print: https://docs.expo.dev/versions/latest/sdk/print/
+- expo-sharing: https://docs.expo.dev/versions/latest/sdk/sharing/
+- @rnmapbox/maps: https://github.com/rnmapbox/maps
+- @react-native-firebase: https://rnfirebase.io/
+- Open-Meteo API: https://open-meteo.com/en/docs
 - Zustand: https://github.com/pmndrs/zustand
-- Material 3: https://m3.material.io/
-- TypeScript Handbook: https://www.typescriptlang.org/docs/
+- React Navigation: https://reactnavigation.org/
+- Material Design 3: https://m3.material.io/
+- react-native-ratings: https://github.com/Monte9/react-native-ratings
+- react-native-paper: https://callstack.github.io/react-native-paper/
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2025-26 COMP1786 Term 1  
-**Prepared for**: M-Hike React Native Development (Coursework Implementation)
-
----
-
-## APPENDIX: Comparison with Xamarin/MAUI
-
-The coursework specification mentions Xamarin/MAUI for features e-f. This plan substitutes React Native + Expo because:
-
-| Aspect | Xamarin/MAUI | React Native (This Plan) |
-|--------|--------------|--------------------------|
-| Language | C# | JavaScript/TypeScript |
-| Learning Curve | Moderate (C# needed) | Lower (JavaScript known) |
-| Dev Experience | Hot Reload (good) | Fast Hot Reload + Expo Go |
-| Community | Smaller | Large, active |
-| Third-party Packages | Limited | Extensive (maps, camera, etc.) |
-| Bundle Size | Larger | Smaller |
-| iOS Testing | Requires Mac + Xcode | Possible via Expo Go on device |
-| Build Complexity | Requires native builds | Managed by Expo |
-
-**Result**: Same feature parity, faster development, better tooling for coursework context.
+**Document Version**: 2.0
+**Last Updated**: 2026-08-05 (Rewritten — React Native kept; full feature parity with Android A–G)
+**Platform**: Cross-platform React Native + Expo
+**Features**: A, B, C, D, E, F, G1, G2, G3, G4, G5, G6 — complete
+**Schema**: v4 — identical structure to Android Room database
+**UI/UX**: Material Design 3 Forest Green — same as Android native version

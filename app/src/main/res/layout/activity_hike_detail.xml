@@ -42,6 +42,26 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- Hero Cover Photo -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardDetailCover"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="0dp">
+
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/imageDetailCover"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="@string/hint_hike_name" />
+
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- Hero Section: Title -->
             <TextView
                 android:id="@+id/textDetailName"

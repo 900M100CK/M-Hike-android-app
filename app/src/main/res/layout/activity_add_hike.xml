@@ -303,6 +303,57 @@
                         android:textStyle="bold"
                         android:layout_marginBottom="16dp" />
 
+                    <!-- Hike Cover Photo Section -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginBottom="16dp">
+
+                        <ImageView
+                            android:id="@+id/imageHikePhotoPreview"
+                            android:layout_width="match_parent"
+                            android:layout_height="180dp"
+                            android:scaleType="centerCrop"
+                            android:visibility="gone"
+                            android:contentDescription="@string/hint_hike_name"
+                            android:layout_marginBottom="8dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/buttonCaptureHikePhoto"
+                                style="@style/Widget.Material3.Button.OutlinedButton"
+                                android:layout_width="0dp"
+                                android:layout_height="48dp"
+                                android:layout_weight="1"
+                                android:text="@string/action_capture_photo"
+                                android:textColor="@color/md_primary"
+                                app:strokeColor="@color/md_primary"
+                                app:icon="@drawable/ic_camera"
+                                app:iconTint="@color/md_primary"
+                                android:layout_marginEnd="6dp" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/buttonPickHikePhoto"
+                                style="@style/Widget.Material3.Button.OutlinedButton"
+                                android:layout_width="0dp"
+                                android:layout_height="48dp"
+                                android:layout_weight="1"
+                                android:text="@string/action_pick_photo"
+                                android:textColor="@color/md_primary"
+                                app:strokeColor="@color/md_primary"
+                                app:icon="@drawable/ic_photo"
+                                app:iconTint="@color/md_primary"
+                                android:layout_marginStart="6dp" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
                     <!-- Description -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/inputLayoutDescription"

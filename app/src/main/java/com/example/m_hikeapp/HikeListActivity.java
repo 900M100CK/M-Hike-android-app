@@ -177,7 +177,14 @@ public class HikeListActivity extends AppCompatActivity
     // -------------------------------------------------------------------------
 
     private void loadAllHikes() {
-        repository.getAllHikes(this::submitList);
+        repository.getAllHikes(hikes -> {
+            if (hikes == null || hikes.isEmpty()) {
+                com.example.m_hikeapp.util.DevSeedHelper.seedIfEmpty(this, () ->
+                        repository.getAllHikes(this::submitList));
+            } else {
+                submitList(hikes);
+            }
+        });
     }
 
     /**

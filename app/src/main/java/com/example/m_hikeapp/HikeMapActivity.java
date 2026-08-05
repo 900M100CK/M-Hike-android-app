@@ -88,8 +88,8 @@ public class HikeMapActivity extends AppCompatActivity {
                 com.mapbox.maps.plugin.annotation.generated.PointAnnotationManager pointAnnotationManager =
                         com.mapbox.maps.plugin.annotation.generated.PointAnnotationManagerKt.createPointAnnotationManager(annotationPlugin, new com.mapbox.maps.plugin.annotation.AnnotationConfig());
 
-                // Convert ic_hiking drawable to Bitmap for Mapbox annotation
-                android.graphics.drawable.Drawable drawable = ContextCompat.getDrawable(this, R.drawable.ic_hiking);
+                // Convert ic_map_marker drawable to Bitmap for Mapbox annotation
+                android.graphics.drawable.Drawable drawable = ContextCompat.getDrawable(this, R.drawable.ic_map_marker);
                 android.graphics.Bitmap bitmap = null;
                 if (drawable != null) {
                     bitmap = android.graphics.Bitmap.createBitmap(
@@ -180,32 +180,20 @@ public class HikeMapActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        if (binding.mapView != null) {
-            binding.mapView.onStart();
-        }
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        if (binding.mapView != null) {
-            binding.mapView.onStop();
-        }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (binding.mapView != null) {
-            binding.mapView.onDestroy();
-        }
     }
 
     @Override
     public void onLowMemory() {
         super.onLowMemory();
-        if (binding.mapView != null) {
-            binding.mapView.onLowMemory();
-        }
     }
 }

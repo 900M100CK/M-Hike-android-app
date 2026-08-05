@@ -155,6 +155,14 @@ public class HikeDetailActivity extends AppCompatActivity
                 String.format(java.util.Locale.getDefault(), "%.1f km", hike.getLengthKm()));
         binding.textDetailDifficulty.setText(hike.getDifficulty());
 
+        // Hero cover photo
+        if (hike.getPhotoUri() != null && !hike.getPhotoUri().isEmpty()) {
+            binding.imageDetailCover.setImageURI(android.net.Uri.parse(hike.getPhotoUri()));
+            binding.cardDetailCover.setVisibility(View.VISIBLE);
+        } else {
+            binding.cardDetailCover.setVisibility(View.GONE);
+        }
+
         // Optional fields
         setOptionalField(binding.textDetailDescription, hike.getDescription());
         setOptionalField(binding.textDetailCustom1, hike.getCustomField1());

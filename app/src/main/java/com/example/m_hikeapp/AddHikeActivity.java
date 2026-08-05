@@ -76,9 +76,26 @@ public class AddHikeActivity extends AppCompatActivity {
     /** Longitude of the trailhead captured via GPS, or null if not captured. */
     private Double capturedLongitude = null;
 
-    // -------------------------------------------------------------------------
-    // Lifecycle
-    // -------------------------------------------------------------------------
+    private String capturedPhotoUriStr = null;
+    private android.net.Uri currentCaptureUri = null;
+
+    private final androidx.activity.result.ActivityResultLauncher<android.net.Uri> capturePhotoLauncher =
+            registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.TakePicture(), success -> {
+                if (Boolean.TRUE.equals(success) && currentCaptureUri != null) {
+                    capturedPhotoUriStr = currentCaptureUri.toString();
+                    binding.imageHikePhotoPreview.setImageURI(currentCaptureUri);
+                    binding.imageHikePhotoPreview.setVisibility(View.VISIBLE);
+                }
+            });
+
+    private final androidx.activity.result.ActivityResultLauncher<String> selectPhotoLauncher =
+            registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.GetContent(), uri -> {
+                if (uri != null) {
+                    capturedPhotoUriStr = uri.toString();
+                    binding.imageHikePhotoPreview.setImageURI(uri);
+                    binding.imageHikePhotoPreview.setVisibility(View.VISIBLE);
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,6 +109,7 @@ public class AddHikeActivity extends AppCompatActivity {
         setupDifficultySpinner();
         setupDatePicker();
         setupLocationButton();
+        setupPhotoButton();
         setupSaveButton();
 
         // Check if we are in edit mode.
@@ -99,6 +117,19 @@ public class AddHikeActivity extends AppCompatActivity {
         if (hikeId != -1L) {
             loadHikeForEditing(hikeId);
         }
+    }
+
+    private void setupPhotoButton() {
+        binding.buttonPickHikePhoto.setOnClickListener(v -> selectPhotoLauncher.launch("image/*"));
+        binding.buttonCaptureHikePhoto.setOnClickListener(v -> {
+            try {
+                java.io.File photoFile = com.example.m_hikeapp.util.ImageUriUtils.createPhotoFile(this);
+                currentCaptureUri = com.example.m_hikeapp.util.ImageUriUtils.toContentUri(this, photoFile);
+                capturePhotoLauncher.launch(currentCaptureUri);
+            } catch (java.io.IOException e) {
+                Toast.makeText(this, "Failed to create image file", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     // -------------------------------------------------------------------------
@@ -232,6 +263,12 @@ public class AddHikeActivity extends AppCompatActivity {
         if (capturedLatitude != null && capturedLongitude != null) {
             binding.textCoordinates.setText(
                     String.format(Locale.US, "%.6f, %.6f", capturedLatitude, capturedLongitude));
+        }
+
+        if (hike.getPhotoUri() != null && !hike.getPhotoUri().isEmpty()) {
+            capturedPhotoUriStr = hike.getPhotoUri();
+            binding.imageHikePhotoPreview.setImageURI(android.net.Uri.parse(hike.getPhotoUri()));
+            binding.imageHikePhotoPreview.setVisibility(View.VISIBLE);
         }
     }
 
@@ -395,6 +432,7 @@ public class AddHikeActivity extends AppCompatActivity {
 
         hike.setLatitude(capturedLatitude);
         hike.setLongitude(capturedLongitude);
+        hike.setPhotoUri(capturedPhotoUriStr);
 
         return hike;
     }
