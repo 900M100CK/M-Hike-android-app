@@ -111,6 +111,46 @@ public class HikeDetailActivity extends AppCompatActivity
             intent.putExtra(HikeListActivity.EXTRA_HIKE_ID, hikeId);
             startActivity(intent);
         });
+
+        // G5: Export PDF report & Share
+        binding.buttonExportPdf.setOnClickListener(v -> exportPdfReport());
+    }
+
+    private void exportPdfReport() {
+        binding.buttonExportPdf.setEnabled(false);
+        Toast.makeText(this, "Generating PDF report...", Toast.LENGTH_SHORT).show();
+
+        repository.getHikeById(hikeId, hike -> {
+            if (hike == null) {
+                binding.buttonExportPdf.setEnabled(true);
+                return;
+            }
+            repository.getObservationsForHike(hikeId, observations -> {
+                com.example.m_hikeapp.export.PdfReportBuilder pdfBuilder =
+                        new com.example.m_hikeapp.export.PdfReportBuilder(this);
+                pdfBuilder.buildReport(hike, observations, new com.example.m_hikeapp.export.PdfReportBuilder.PdfCallback() {
+                    @Override
+                    public void onSuccess(java.io.File file, android.net.Uri uri) {
+                        binding.buttonExportPdf.setEnabled(true);
+                        sharePdfUri(uri);
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        binding.buttonExportPdf.setEnabled(true);
+                        Toast.makeText(HikeDetailActivity.this, R.string.pdf_report_error, Toast.LENGTH_LONG).show();
+                    }
+                });
+            });
+        });
+    }
+
+    private void sharePdfUri(android.net.Uri uri) {
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.setType("application/pdf");
+        shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(Intent.createChooser(shareIntent, getString(R.string.pdf_share_title)));
     }
 
     // -------------------------------------------------------------------------

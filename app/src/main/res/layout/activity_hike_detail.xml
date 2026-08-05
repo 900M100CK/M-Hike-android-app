@@ -278,19 +278,42 @@
                 android:visibility="gone"
                 tools:text="Note 2" />
 
-            <!-- Edit Hike Action -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonEditHike"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+            <!-- Action Button Row: Edit Hike & Export PDF -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="@string/action_edit_hike"
-                android:textColor="@color/md_primary"
-                app:strokeColor="@color/md_primary"
-                app:cornerRadius="12dp"
-                app:icon="@drawable/ic_edit"
-                app:iconTint="@color/md_primary"
-                android:layout_marginBottom="24dp" />
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="24dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonEditHike"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:text="@string/action_edit_hike"
+                    android:textColor="@color/md_primary"
+                    app:strokeColor="@color/md_primary"
+                    app:cornerRadius="12dp"
+                    app:icon="@drawable/ic_edit"
+                    app:iconTint="@color/md_primary"
+                    android:layout_marginEnd="6dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonExportPdf"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:text="@string/action_export_pdf"
+                    android:textColor="@color/md_on_primary_container"
+                    app:backgroundTint="@color/md_primary_container"
+                    app:cornerRadius="12dp"
+                    app:icon="@drawable/ic_hiking"
+                    app:iconTint="@color/md_on_primary_container"
+                    android:layout_marginStart="6dp" />
+
+            </LinearLayout>
 
             <!-- ============================================================ -->
             <!-- OBSERVATIONS SECTION                                         -->
