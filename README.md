@@ -1,88 +1,137 @@
-# M-Hike: Mobile Hiker Management Application
+# M-Hike: Native Android Hiker Management Application 🏔️
 
-An Android native mobile application built using Java and SQLite, designed to help hikers plan, record, and manage their hikes and real-time trail observations. This project is developed as part of the **COMP1786 Mobile Application Design and Development** coursework (Term 1, 2025-26).
+**M-Hike** is a feature-rich, local-first native Android application built in **Java** for outdoor enthusiasts to plan, document, and track hiking journeys and trail observations. Developed for the **COMP1786 Mobile Application Design and Development** coursework (Term 1, 2025-26).
 
 ---
 
-## 🚀 Features
+## ✨ Features Overview
 
-### Core Features (Features a-d)
-*   **Hike Data Entry & Validation:** Record essential hike details with robust validation:
-    *   Hike Name
-    *   Location/Destination
-    *   Date of Hike
-    *   Parking Availability (Yes/No)
-    *   Length of Hike (km)
-    *   Difficulty Level (Easy, Medium, Hard, etc.)
-    *   Additional Description
-*   **Local SQLite Persistence (CRUD):** 
-    *   Store hike data locally on the device (no internet required).
-    *   View, edit, update, or delete existing hikes.
-*   **Observations Tracking:**
-    *   Add multiple real-time observations (e.g., wildlife sightings, weather changes, vegetation, trail blockages) to any specific hike.
-    *   Each observation records a name, time of observation, and optional comments.
-*   **Advanced Search & Filter:**
-    *   Quickly search hikes by name, location, or date.
-    *   Filter hikes based on difficulty or parking availability.
+### 📋 Core Features (Features A – D)
+- **Feature A — Hike Data Entry & Validation:**
+  - Mandatory fields: Hike Name, Location, Date (DatePicker), Parking (Yes/No), Length (km), Difficulty (Easy, Moderate, Hard, Expert).
+  - Optional fields: Description, Custom Note 1 & 2, Cover Photo, GPS Coordinates, Trail Rating, Weather Notes.
+  - Real-time inline error handling via `TextInputLayout` and pre-save confirmation modal.
+- **Feature B — Local Room Database Persistence (CRUD):**
+  - Powered by **Room Database v4** with full migration support.
+  - Local-first architecture — complete offline availability without internet.
+  - Interactive `RecyclerView` list with DiffUtil for smooth animated updates, difficulty color badges, and cover photo thumbnails.
+- **Feature C — In-Field Observations:**
+  - Attach unlimited observations to any hike (Title, locked current clock time, comments, step count, photo, temperature).
+  - Auto-fills current temperature (°C) and 1-hour weather forecast via Open-Meteo API.
+  - Cascading deletion: deleting a hike automatically removes its observations.
+- **Feature D — Advanced Search & Filter:**
+  - Live search bar with instant name-matching (`LOWER(name) LIKE`).
+  - Multi-criteria filter screen (location, date range, min/max length, difficulty) built safely with parameterized `SupportSQLiteQuery`.
+
+---
+
+### 🌟 Advanced Feature Pack (Features E – G)
+- **Feature E — Firebase Authentication:**
+  - Secure email/password login & registration via Firebase Auth.
+  - User session caching for offline access.
+- **Feature F — Cloud Synchronization:**
+  - Best-effort background push sync to **Firebase Realtime Database** (`users/{uid}/hikes/{hikeId}`).
+  - Local dirty flag (`is_synced`) with automatic retry on network reconnection.
+- **Feature G1 — Map View & GPS Trailhead Capture:**
+  - Integrated **Mapbox Maps SDK** for full-screen interactive trail mapping.
+  - GPS trailhead location capture via `FusedLocationProviderClient` with auto-clipboard copy.
+- **Feature G2 — Photo Capture & Storage:**
+  - Take cover photos for Hikes and Observations using system Camera or Gallery picker (`FileProvider`).
+  - Displayed as 56x56dp rounded card covers in the list and 200dp hero banners in the detail view.
+- **Feature G3 — Walking Duration Calculator:**
+  - Auto-calculates estimated walking duration based on Naismith's Rule (12 min/km × difficulty multiplier).
+  - Displays pace comparison ("On pace", "Faster", "Slower").
+- **Feature G4 — Weather Forecast Integration:**
+  - Live weather banner powered by **Open-Meteo API** (free, no API key required).
+  - Surfaces current outdoor temperature alongside predicted temperature 1 hour ahead when adding observations.
+  - Weather warnings for upcoming rain, snow, or storm conditions.
+- **Feature G5 — Export to PDF & Share:**
+  - Generates beautiful A4 PDF hike reports natively using `android.graphics.pdf.PdfDocument`.
+  - Instant sharing via Android system Share Sheet (Email, Drive, WhatsApp).
+- **Feature G6 — Trail Condition Rating System:**
+  - 1–5 star rating system (`RatingBar`) with descriptive labels (*Very Poor* to *Excellent*) and review notes.
+- **🌱 Automatic Developer Seed Data (`DevSeedHelper`):**
+  - Automatically seeds 8 realistic hikes (Vietnam & UK) + 19 detailed observations whenever the database is empty.
 
 ---
 
 ## 🛠️ Tech Stack & Architecture
 
-*   **Platform:** Native Android
-*   **Language:** Java
-*   **UI/UX Framework:** Android XML layouts conforming to **Material Design 3 (M3)**
-*   **Database:** SQLite (local-first storage with `DatabaseHelper` and helper classes)
-*   **Design Patterns:**
-    *   **Repository Pattern:** Decouples the UI logic from raw database operations.
-    *   **DAO (Data Access Object) Pattern:** Abstracts SQLite query execution.
-    *   **Adapter Pattern:** Efficiently populates lists via `RecyclerView` and custom adapters (`HikeAdapter`, `ObservationAdapter`).
+- **Platform:** Native Android (API 26+ / Android 8.0+)
+- **Target SDK:** 35 (Android 15) | **Compile SDK:** 35
+- **Language:** Java
+- **UI Architecture:** Material Design 3 (Forest Green Theme `#386A1F`), ViewBinding throughout.
+- **Database:** Room v4 (Entities: `Hike`, `Observation`) with single-threaded `ExecutorService` & `Handler` main-thread dispatching.
+- **Authentication & Cloud:** Firebase Auth & Firebase Realtime Database (`com.google.firebase:firebase-bom:32.7.0`).
+- **Mapping & Location:** Mapbox Maps SDK (`com.mapbox.maps:android`) & Google Play Services Location (`play-services-location`).
+- **Network & JSON:** OkHttp 4.12.0 & Gson 2.10.1.
+- **PDF Export:** Native `android.graphics.pdf.PdfDocument` + `FileProvider`.
 
 ---
 
 ## 📂 Project Structure
 
-The project code is organized cleanly within the standard Android package layout:
-
 ```text
 com.example.m_hikeapp
 ├── adapter/
-│   ├── HikeAdapter.java          # Handles RecyclerView listing for hikes
-│   └── ObservationAdapter.java   # Handles RecyclerView listing for observations
+│   ├── HikeAdapter.java              # RecyclerView adapter for hike list (with cover photo & diff badges)
+│   └── ObservationAdapter.java       # RecyclerView adapter for observation list
 ├── dao/
-│   ├── HikeDao.java              # Database queries for hikes
-│   └── ObservationDao.java       # Database queries for observations
+│   ├── HikeDao.java                  # Room DAO queries for hikes (@Query, @RawQuery)
+│   └── ObservationDao.java           # Room DAO queries for observations
 ├── database/
-│   └── DatabaseHelper.java       # SQLite database initialization & migrations
+│   └── AppDatabase.java              # Room database singleton v4 with migrations (1_2, 2_3, 3_4)
+├── export/
+│   └── PdfReportBuilder.java         # PDF document generation helper (Feature G5)
 ├── model/
-│   ├── Hike.java                 # Hike data model
-│   └── Observation.java          # Observation data model
+│   ├── Hike.java                     # Hike entity (21 columns, v4 schema)
+│   └── Observation.java              # Observation entity (8 columns, FK ON DELETE CASCADE)
 ├── repository/
-│   └── HikeRepository.java       # Business logic repository abstraction
+│   └── HikeRepository.java           # Thread-safe repository gateway (ExecutorService + Handler)
+├── sync/
+│   └── FirebaseSyncHelper.java       # Firebase Realtime Database cloud sync delegate
 ├── util/
-│   ├── ValidationResult.java     # Form validation results wrapper
-│   └── ValidationUtils.java      # Reusable form validation helper methods
-├── MainActivity.java             # Entry point of the application
-├── HikeListActivity.java         # Activity displaying all recorded hikes
-├── HikeDetailActivity.java       # Activity detailing a hike & displaying observations
-├── AddHikeActivity.java          # Activity to add/edit a hike
-├── AddObservationActivity.java   # Activity to add observation to a hike
-└── SearchFilterActivity.java     # Activity to search and filter hikes
+│   ├── DevSeedHelper.java            # Automatic sample data seeder (8 hikes + 19 observations)
+│   ├── DurationCalculator.java       # Naismith rule walking duration calculator (Feature G3)
+│   ├── ImageUriUtils.java            # FileProvider photo capture & URI helper (Feature G2)
+│   ├── ValidationResult.java         # Form validation error map
+│   ├── ValidationUtils.java          # Reusable validation logic
+│   ├── WeatherContract.java          # Weather condition constants
+│   └── WeatherHelper.java            # Open-Meteo API client with 1-hour forecast (Feature G4)
+├── AddHikeActivity.java              # Create & edit hike form + GPS + Camera
+├── AddObservationActivity.java       # Observation form + auto-time + weather forecast
+├── HikeDetailActivity.java           # Detailed hike view + hero cover + observations list + PDF export
+├── HikeListActivity.java             # Main activity: list, search, weather banner, auto-seed
+├── HikeMapActivity.java              # Mapbox interactive map view (Feature G1)
+├── LoginActivity.java                # Firebase email/password authentication
+├── MainActivity.java                 # Auth gate & launcher redirect
+├── MhikeApplication.java            # Application class
+└── SearchFilterActivity.java         # Advanced multi-criteria search screen
 ```
 
 ---
 
 ## ⚙️ Installation & Setup
 
-1.  **Prerequisites:**
-    *   Android Studio (Ladybug or newer recommended)
-    *   Android SDK 34 or higher
-    *   Java JDK 17
-2.  **Steps to Run:**
-    *   Clone this repository:
-        ```bash
-        git clone https://github.com/900M100CK/M-Hike-android-app.git
-        ```
-    *   Open Android Studio and choose **File > Open**, then select the project root directory.
-    *   Sync Gradle files and build the project.
-    *   Run the application on an Android Emulator or a physical device with USB debugging enabled.
+1. **Prerequisites:**
+   - Android Studio (Ladybug 2024.2+ recommended)
+   - JDK 17
+   - Android SDK 35
+
+2. **Clone & Open:**
+   ```bash
+   git clone https://github.com/900M100CK/M-Hike-android-app.git
+   ```
+   Open the root directory in Android Studio.
+
+3. **Mapbox & Firebase Configuration:**
+   - Add your Mapbox Access Token to `local.properties`:
+     ```properties
+     MAPBOX_DOWNLOADS_TOKEN=your_mapbox_secret_download_token
+     ```
+     And set `<string name="mapbox_access_token">your_public_mapbox_token</string>` in `app/src/main/res/values/mapbox_access_token.xml`.
+   - Place your `google-services.json` in the `app/` directory for Firebase Auth/RTDB functionality.
+
+4. **Run Project:**
+   - Sync Gradle and press **Run** (Shift + F10) on an emulator or physical device.
+   - On first launch, 8 realistic sample hikes with observations will be seeded automatically!
