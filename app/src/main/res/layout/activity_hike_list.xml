@@ -30,6 +30,27 @@
             app:titleTextAppearance="?attr/textAppearanceTitleLarge"
             app:titleTextColor="@color/md_primary" />
 
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tabLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/md_background"
+            app:tabIndicatorColor="@color/md_primary"
+            app:tabSelectedTextColor="@color/md_primary"
+            app:tabTextColor="@color/md_on_surface_variant">
+
+            <com.google.android.material.tabs.TabItem
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="My Hikes" />
+
+            <com.google.android.material.tabs.TabItem
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Online Feed" />
+
+        </com.google.android.material.tabs.TabLayout>
+
     </com.google.android.material.appbar.AppBarLayout>
 
     <!-- Main content area -->
@@ -126,7 +147,7 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Action row: Filter + Delete All -->
+            <!-- Action row: Filter + Reset + Add Samples -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -148,13 +169,27 @@
                     app:strokeColor="@color/md_outline"
                     app:cornerRadius="22dp" />
 
+                <!-- Add Samples Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonAddSamples"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:text="@string/action_add_samples"
+                    android:textColor="@color/md_primary"
+                    android:layout_marginEnd="8dp"
+                    app:icon="@drawable/ic_hiking"
+                    app:iconTint="@color/md_primary"
+                    app:strokeColor="@color/md_outline"
+                    app:cornerRadius="22dp" />
+
                 <!-- Delete All Button -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonDeleteAll"
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="44dp"
-                    android:text="@string/action_delete_all"
+                    android:text="@string/action_reset_db"
                     android:textColor="@color/md_error"
                     app:icon="@drawable/ic_delete"
                     app:iconTint="@color/md_error"

@@ -17,13 +17,11 @@ public class DevSeedHelper {
     public static void seedIfEmpty(Context context, Runnable onComplete) {
         HikeRepository repository = HikeRepository.getInstance(context);
 
-        repository.getAllHikes(existing -> {
-            if (existing != null && !existing.isEmpty()) {
-                if (onComplete != null) onComplete.run();
-                return;
-            }
-
-            // Seed 8 realistic Hikes
+        // Force clear all old data (both Local & Firebase) then re-seed
+        // to fix the "NOT NULL constraint failed: hikes.parkingAvailable" issue
+        // and ensure all fields (parkingAvailable, lengthKm, etc.) are correctly populated.
+        repository.deleteAllHikes((success, message) -> {
+            // Seed 8 realistic Hikes with full data
             List<Hike> sampleHikes = createSampleHikes();
             insertHikesSequentially(repository, sampleHikes, 0, onComplete);
         });

@@ -1,6 +1,6 @@
 # M-Hike React Native App — Agent Briefing & Development Plan
 
-**Version:** 2.0 (Full Feature Parity with Android Native)
+**Version:** 3.0 (Room + Firebase Hybrid + Extended Feature Pack)
 **Platform:** Cross-Platform iOS + Android via React Native
 **Tech Stack:** React Native, Expo (managed workflow), TypeScript, React Navigation v6, expo-sqlite (v4 schema), Zustand, Firebase Auth, Firebase Realtime Database, @rnmapbox/maps (Mapbox), Open-Meteo API, expo-camera, expo-location, expo-print, expo-sharing, react-native-paper (Material Design 3)
 **Status:** Coursework Implementation (COMP1786 Term 1)
@@ -173,15 +173,17 @@ export const CREATE_OBSERVATIONS_TABLE = `
     step_count           INTEGER,
     photo_uri            TEXT,
     temperature_celsius  REAL,
+    is_synced            INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY(hike_id) REFERENCES hikes(id) ON DELETE CASCADE
   )
 `;
 
-// Migration v3 -> v4 (adds extended observation fields)
+// Migration v3 -> v4 (adds extended observation fields + sync flag)
 export const MIGRATION_3_4 = [
   "ALTER TABLE observations ADD COLUMN step_count INTEGER",
   "ALTER TABLE observations ADD COLUMN photo_uri TEXT",
   "ALTER TABLE observations ADD COLUMN temperature_celsius REAL",
+  "ALTER TABLE observations ADD COLUMN is_synced INTEGER NOT NULL DEFAULT 0",
 ];
 ```
 
@@ -232,6 +234,7 @@ export interface Observation {
   stepCount?: number;
   photoUri?: string;
   temperatureCelsius?: number;
+  isSynced: boolean;                    // dirty flag
 }
 ```
 
@@ -379,7 +382,7 @@ useEffect(() => {
 
 **Sign-Out:** Header menu "Logout" → signOut() → auth state listener fires → LoginScreen
 
-### Feature F: Firebase Realtime Database Sync (5%)
+### Feature F: Cloud Sync (Firebase Realtime Database) (5%)
 
 ```typescript
 // services/firebaseSync.ts
@@ -391,14 +394,21 @@ export const pushHike = async (uid: string, hike: Hike) =>
 export const removeHike = async (uid: string, hikeId: number) =>
   database().ref(`users/${uid}/hikes/${hikeId}`).remove();
 
+export const pushObservation = async (uid: string, hikeId: number, obs: Observation) =>
+  database().ref(`users/${uid}/hikes/${hikeId}/observations/${obs.id}`).set(obs);
+
+export const removeObservation = async (uid: string, hikeId: number, obsId: number) =>
+  database().ref(`users/${uid}/hikes/${hikeId}/observations/${obsId}`).remove();
+
 export const removeAllHikes = async (uid: string) =>
   database().ref(`users/${uid}/hikes`).remove();
 ```
 
 - **Direction:** Local → Cloud (best-effort push; no pull)
-- **Path:** users/{uid}/hikes/{hikeId}
-- **After every local write:** call pushHike() in store; on success: markHikeSynced(db, id)
-- **On failure:** hike stays with isSynced=false; retry on next loadHikes() call
+- **Hike Path:** users/{uid}/hikes/{hikeId}
+- **Observation Path:** users/{uid}/hikes/{hikeId}/observations/{obsId}
+- **After every local write:** call pushHike() or pushObservation() in store; on success: markSynced(db, id)
+- **On failure:** entry stays with isSynced=false; retry on next load call
 - **Offline:** SQLite is always source of truth; Firebase failure never crashes app
 
 ### Feature G1: Map View & GPS

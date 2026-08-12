@@ -180,7 +180,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
-                android:hint="@string/hint_obs_comment">
+                android:hint="@string/hint_obs_comment"
+                app:endIconMode="custom"
+                app:endIconDrawable="@drawable/ic_mic"
+                app:endIconContentDescription="Voice input">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/editTextObsComment"

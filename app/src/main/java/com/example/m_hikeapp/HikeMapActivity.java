@@ -33,6 +33,7 @@ public class HikeMapActivity extends AppCompatActivity {
     private HikeRepository repository;
     private FusedLocationProviderClient fusedLocationClient;
     private long hikeId;
+    private boolean isOnline;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +44,7 @@ public class HikeMapActivity extends AppCompatActivity {
         repository = HikeRepository.getInstance(this);
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         hikeId = getIntent().getLongExtra(EXTRA_HIKE_ID, -1L);
+        isOnline = getIntent().getBooleanExtra("IS_ONLINE", false);
 
         setupToolbar();
         loadHikeAndInitializeMap();
@@ -57,6 +59,11 @@ public class HikeMapActivity extends AppCompatActivity {
     }
 
     private void loadHikeAndInitializeMap() {
+        if (isOnline && HikeListActivity.selectedPublicHike != null) {
+            setupMapWithHike(HikeListActivity.selectedPublicHike);
+            return;
+        }
+
         if (hikeId == -1L) {
             Toast.makeText(this, R.string.error_invalid_hike, Toast.LENGTH_SHORT).show();
             finish();
@@ -69,10 +76,14 @@ public class HikeMapActivity extends AppCompatActivity {
                 finish();
                 return;
             }
+            setupMapWithHike(hike);
+        });
+    }
 
-            if (getSupportActionBar() != null) {
-                getSupportActionBar().setTitle(hike.getName());
-            }
+    private void setupMapWithHike(Hike hike) {
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(hike.getName());
+        }
 
             binding.mapView.getMapboxMap().loadStyleUri(Style.STANDARD, style -> {
                 // Check if lat/long coordinates exist, default to Snowdonia/UK or center if available
@@ -128,7 +139,6 @@ public class HikeMapActivity extends AppCompatActivity {
                     binding.mapView.getMapboxMap().setCamera(new CameraOptions.Builder().zoom(currentZoom - 1.0).build());
                 });
             });
-        });
     }
 
     private void moveToDeviceLocation(Point fallbackPoint) {

@@ -5,6 +5,7 @@ import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
+import com.google.firebase.database.Exclude;
 
 /**
  * Room {@link Entity} representing a single observation linked to a {@link Hike}.
@@ -67,6 +68,10 @@ public class Observation {
     @ColumnInfo(name = "temperature_celsius")
     private Double temperatureCelsius;
 
+    /** Local sync flag (true when synced to Firebase Cloud). */
+    @ColumnInfo(name = "is_synced")
+    private boolean isSynced;
+
     // -------------------------------------------------------------------------
     // Constructors
     // -------------------------------------------------------------------------
@@ -114,6 +119,10 @@ public class Observation {
 
     public Double getTemperatureCelsius()                       { return temperatureCelsius; }
     public void setTemperatureCelsius(Double temperatureCelsius) { this.temperatureCelsius = temperatureCelsius; }
+
+    @Exclude
+    public boolean isSynced()                  { return isSynced; }
+    public void setSynced(boolean synced)      { isSynced = synced; }
 
     @Override
     public String toString() {

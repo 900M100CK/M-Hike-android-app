@@ -35,10 +35,14 @@ public class HikeDetailActivity extends AppCompatActivity
     // -------------------------------------------------------------------------
     // ViewBinding & dependencies
     // -------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // ViewBinding & dependencies
+    // -------------------------------------------------------------------------
     private ActivityHikeDetailBinding binding;
     private HikeRepository            repository;
     private ObservationAdapter        obsAdapter;
     private long                      hikeId;
+    private boolean                   isOnline;
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -52,6 +56,8 @@ public class HikeDetailActivity extends AppCompatActivity
         setContentView(binding.getRoot());
 
         hikeId = getIntent().getLongExtra(HikeListActivity.EXTRA_HIKE_ID, -1L);
+        isOnline = getIntent().getBooleanExtra("IS_ONLINE", false);
+
         if (hikeId == -1L) {
             Toast.makeText(this, R.string.error_invalid_hike, Toast.LENGTH_SHORT).show();
             finish();
@@ -112,6 +118,11 @@ public class HikeDetailActivity extends AppCompatActivity
             startActivity(intent);
         });
 
+        if (isOnline) {
+            binding.buttonEditHike.setVisibility(View.GONE);
+            binding.buttonAddObservation.setVisibility(View.GONE);
+        }
+
         // G5: Export PDF report & Share
         binding.buttonExportPdf.setOnClickListener(v -> exportPdfReport());
     }
@@ -158,6 +169,10 @@ public class HikeDetailActivity extends AppCompatActivity
     // -------------------------------------------------------------------------
 
     private void loadHikeDetails() {
+        if (isOnline && HikeListActivity.selectedPublicHike != null) {
+            populateDetails(HikeListActivity.selectedPublicHike);
+            return;
+        }
         repository.getHikeById(hikeId, hike -> {
             if (hike == null) {
                 Toast.makeText(this, R.string.error_hike_not_found, Toast.LENGTH_SHORT).show();
@@ -169,6 +184,12 @@ public class HikeDetailActivity extends AppCompatActivity
     }
 
     private void loadObservations() {
+        if (isOnline && HikeListActivity.selectedPublicObservations != null) {
+            obsAdapter.submitList(HikeListActivity.selectedPublicObservations);
+            binding.textNoObservations.setVisibility(
+                    HikeListActivity.selectedPublicObservations.isEmpty() ? View.VISIBLE : View.GONE);
+            return;
+        }
         repository.getObservationsForHike(hikeId, observations -> {
             obsAdapter.submitList(observations);
             binding.textNoObservations.setVisibility(
@@ -197,7 +218,7 @@ public class HikeDetailActivity extends AppCompatActivity
 
         // Hero cover photo
         if (hike.getPhotoUri() != null && !hike.getPhotoUri().isEmpty()) {
-            binding.imageDetailCover.setImageURI(android.net.Uri.parse(hike.getPhotoUri()));
+            com.example.m_hikeapp.util.ImageUriUtils.loadImage(this, binding.imageDetailCover, hike.getPhotoUri());
             binding.cardDetailCover.setVisibility(View.VISIBLE);
         } else {
             binding.cardDetailCover.setVisibility(View.GONE);
@@ -225,6 +246,10 @@ public class HikeDetailActivity extends AppCompatActivity
 
     @Override
     public void onEditObservation(Observation observation) {
+        if (isOnline) {
+            Toast.makeText(this, "Cannot edit public observation", Toast.LENGTH_SHORT).show();
+            return;
+        }
         Intent intent = new Intent(this, AddObservationActivity.class);
         intent.putExtra(HikeListActivity.EXTRA_HIKE_ID, hikeId);
         intent.putExtra(EXTRA_OBSERVATION_ID, observation.getId());
@@ -233,6 +258,10 @@ public class HikeDetailActivity extends AppCompatActivity
 
     @Override
     public void onDeleteObservation(Observation observation) {
+        if (isOnline) {
+            Toast.makeText(this, "Cannot delete public observation", Toast.LENGTH_SHORT).show();
+            return;
+        }
         new AlertDialog.Builder(this)
                 .setTitle(R.string.dialog_delete_obs_title)
                 .setMessage(getString(R.string.dialog_delete_obs_message, observation.getTitle()))

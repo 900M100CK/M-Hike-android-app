@@ -3,6 +3,8 @@ package com.example.m_hikeapp.model;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
+import com.google.firebase.database.Exclude;
+import com.google.firebase.database.IgnoreExtraProperties;
 
 /**
  * Room {@link Entity} representing a single hike entry.
@@ -186,6 +188,7 @@ public class Hike {
     public String getUserId()                  { return userId; }
     public void setUserId(String userId)       { this.userId = userId; }
 
+    @Exclude
     public boolean isSynced()                  { return isSynced; }
     public void setSynced(boolean synced)      { isSynced = synced; }
 

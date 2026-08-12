@@ -6,6 +6,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Toast;
@@ -19,6 +20,8 @@ import androidx.core.content.ContextCompat;
 import com.example.m_hikeapp.databinding.ActivityAddHikeBinding;
 import com.example.m_hikeapp.model.Hike;
 import com.example.m_hikeapp.repository.HikeRepository;
+import com.example.m_hikeapp.util.ImageUriUtils;
+import com.example.m_hikeapp.util.ImgBbHelper;
 import com.example.m_hikeapp.util.ValidationResult;
 import com.example.m_hikeapp.util.ValidationUtils;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -38,36 +41,22 @@ import java.util.Locale;
  *       highlights inline errors via {@code TextInputLayout.setError()}.</li>
  *   <li>If valid → confirmation dialog summarises all values.</li>
  *   <li>On "Save" in dialog → {@link HikeRepository#addHike} or
- *       {@link HikeRepository#updateHike} is called asynchronously.</li>
+ *       {@link HikeRepository#updateHike} saves to local Room DB.</li>
  * </ol>
- *
- * <h3>Edit mode</h3>
- * <p>Pass {@link HikeListActivity#EXTRA_HIKE_ID} in the launching Intent to
- * pre-populate all fields for editing an existing hike.</p>
  */
 public class AddHikeActivity extends AppCompatActivity {
 
-    // -------------------------------------------------------------------------
-    // Constants
-    // -------------------------------------------------------------------------
-    private static final String DATE_FORMAT = "yyyy-MM-dd";
+    public static final String EXTRA_HIKE_ID = "extra_hike_id";
+    private static final int REQUEST_LOCATION_PERMISSION = 1001;
 
-    /** Request code for the fine-location runtime permission (Feature E2). */
-    private static final int REQUEST_LOCATION_PERMISSION = 100;
-
-    // -------------------------------------------------------------------------
-    // ViewBinding & dependencies
-    // -------------------------------------------------------------------------
     private ActivityAddHikeBinding binding;
     private HikeRepository         repository;
 
     /** Google Play services client used to fetch the trailhead location fix. */
     private FusedLocationProviderClient fusedLocationClient;
 
-    /** Non-null when editing an existing hike; null when adding a new one. */
+    /** Existing hike populated when editing, null when creating. */
     private Hike existingHike = null;
-
-    /** Selected date stored as "yyyy-MM-dd". */
     private String selectedDate = "";
 
     /** Latitude of the trailhead captured via GPS, or null if not captured. */
@@ -78,13 +67,14 @@ public class AddHikeActivity extends AppCompatActivity {
 
     private String capturedPhotoUriStr = null;
     private android.net.Uri currentCaptureUri = null;
+    private boolean isUploadingPhoto = false;
 
     private final androidx.activity.result.ActivityResultLauncher<android.net.Uri> capturePhotoLauncher =
             registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.TakePicture(), success -> {
                 if (Boolean.TRUE.equals(success) && currentCaptureUri != null) {
                     capturedPhotoUriStr = currentCaptureUri.toString();
-                    binding.imageHikePhotoPreview.setImageURI(currentCaptureUri);
-                    binding.imageHikePhotoPreview.setVisibility(View.VISIBLE);
+                    ImageUriUtils.loadImage(this, binding.imageHikePhotoPreview, capturedPhotoUriStr);
+                    uploadPhotoToImgBb(capturedPhotoUriStr);
                 }
             });
 
@@ -92,10 +82,77 @@ public class AddHikeActivity extends AppCompatActivity {
             registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.GetContent(), uri -> {
                 if (uri != null) {
                     capturedPhotoUriStr = uri.toString();
-                    binding.imageHikePhotoPreview.setImageURI(uri);
-                    binding.imageHikePhotoPreview.setVisibility(View.VISIBLE);
+                    ImageUriUtils.loadImage(this, binding.imageHikePhotoPreview, capturedPhotoUriStr);
+                    uploadPhotoToImgBb(capturedPhotoUriStr);
                 }
             });
+
+    /**
+     * Feature: Voice-to-Text for descriptions.
+     */
+    private final androidx.activity.result.ActivityResultLauncher<android.content.Intent> voiceInputLauncher =
+            registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    java.util.ArrayList<String> matches = result.getData().getStringArrayListExtra(
+                            android.speech.RecognizerIntent.EXTRA_RESULTS);
+                    if (matches != null && !matches.isEmpty()) {
+                        String spokenText = matches.get(0);
+                        android.text.Editable currentEditable = binding.editTextDescription.getText();
+                        String currentText = (currentEditable != null) ? currentEditable.toString() : "";
+                        if (!currentText.isEmpty()) {
+                            binding.editTextDescription.setText(currentText + " " + spokenText);
+                        } else {
+                            binding.editTextDescription.setText(spokenText);
+                        }
+                        binding.editTextDescription.setSelection(binding.editTextDescription.getText().length());
+                    }
+                }
+            });
+
+    private final androidx.activity.result.ActivityResultLauncher<String> requestAudioPermissionLauncher =
+            registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    startVoiceInput();
+                } else {
+                    Toast.makeText(this, "Audio permission is required for voice input", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+    private void startVoiceInput() {
+        android.content.Intent intent = new android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+        intent.putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak now to add to your description...");
+        try {
+            voiceInputLauncher.launch(intent);
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(this, "Speech recognition is not supported on this device", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void uploadPhotoToImgBb(String uriStr) {
+        isUploadingPhoto = true;
+        binding.buttonPreviewSave.setEnabled(false);
+        Toast.makeText(this, "Uploading photo to ImgBB...", Toast.LENGTH_SHORT).show();
+        ImgBbHelper.uploadImage(this, uriStr, new ImgBbHelper.UploadCallback() {
+            @Override
+            public void onSuccess(String imageUrl) {
+                isUploadingPhoto = false;
+                binding.buttonPreviewSave.setEnabled(true);
+                capturedPhotoUriStr = imageUrl;
+                ImageUriUtils.loadImage(AddHikeActivity.this, binding.imageHikePhotoPreview, imageUrl);
+                Toast.makeText(AddHikeActivity.this, "Photo uploaded to ImgBB!", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                isUploadingPhoto = false;
+                binding.buttonPreviewSave.setEnabled(true);
+                Log.w("AddHikeActivity", "ImgBB upload failed: " + e.getMessage());
+            }
+        });
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,6 +167,7 @@ public class AddHikeActivity extends AppCompatActivity {
         setupDatePicker();
         setupLocationButton();
         setupPhotoButton();
+        setupVoiceButton();
         setupSaveButton();
 
         // Check if we are in edit mode.
@@ -128,6 +186,17 @@ public class AddHikeActivity extends AppCompatActivity {
                 capturePhotoLauncher.launch(currentCaptureUri);
             } catch (java.io.IOException e) {
                 Toast.makeText(this, "Failed to create image file", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void setupVoiceButton() {
+        binding.inputLayoutDescription.setEndIconOnClickListener(v -> {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                    == PackageManager.PERMISSION_GRANTED) {
+                startVoiceInput();
+            } else {
+                requestAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO);
             }
         });
     }
@@ -267,8 +336,7 @@ public class AddHikeActivity extends AppCompatActivity {
 
         if (hike.getPhotoUri() != null && !hike.getPhotoUri().isEmpty()) {
             capturedPhotoUriStr = hike.getPhotoUri();
-            binding.imageHikePhotoPreview.setImageURI(android.net.Uri.parse(hike.getPhotoUri()));
-            binding.imageHikePhotoPreview.setVisibility(View.VISIBLE);
+            ImageUriUtils.loadImage(this, binding.imageHikePhotoPreview, hike.getPhotoUri());
         }
     }
 

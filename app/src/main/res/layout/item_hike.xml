@@ -161,18 +161,49 @@
 
             </LinearLayout>
 
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/textHikeAuthor"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="@color/md_primary"
+                android:layout_marginTop="4dp"
+                android:textStyle="italic"
+                android:visibility="gone"
+                tools:text="By: author@example.com" />
+
         </LinearLayout>
 
-        <!-- Delete icon button (48dp touch target) -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonDeleteHike"
-            style="@style/Widget.Material3.Button.IconButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            app:icon="@drawable/ic_delete"
-            app:iconTint="@color/md_error"
-            android:contentDescription="@string/action_delete"
-            android:layout_marginStart="6dp" />
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Publish icon button -->
+            <ImageView
+                android:id="@+id/buttonPublishHike"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_share"
+                app:tint="@color/md_primary"
+                android:padding="12dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Publish" />
+
+            <!-- Delete icon button (48dp touch target) -->
+            <ImageView
+                android:id="@+id/buttonDeleteHike"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_delete"
+                app:tint="@color/md_error"
+                android:padding="12dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/action_delete"
+                android:layout_marginStart="2dp" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

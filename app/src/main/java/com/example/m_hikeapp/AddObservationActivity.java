@@ -40,13 +40,14 @@ public class AddObservationActivity extends AppCompatActivity {
 
     private String capturedPhotoUriStr = null;
     private android.net.Uri currentCaptureUri = null;
+    private boolean isUploadingPhoto = false;
 
     private final androidx.activity.result.ActivityResultLauncher<android.net.Uri> capturePhotoLauncher =
             registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.TakePicture(), success -> {
                 if (Boolean.TRUE.equals(success) && currentCaptureUri != null) {
                     capturedPhotoUriStr = currentCaptureUri.toString();
-                    binding.imageObsPhotoPreview.setImageURI(currentCaptureUri);
-                    binding.imageObsPhotoPreview.setVisibility(android.view.View.VISIBLE);
+                    com.example.m_hikeapp.util.ImageUriUtils.loadImage(this, binding.imageObsPhotoPreview, capturedPhotoUriStr);
+                    uploadPhotoToImgBb(capturedPhotoUriStr);
                 }
             });
 
@@ -54,10 +55,78 @@ public class AddObservationActivity extends AppCompatActivity {
             registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.GetContent(), uri -> {
                 if (uri != null) {
                     capturedPhotoUriStr = uri.toString();
-                    binding.imageObsPhotoPreview.setImageURI(uri);
-                    binding.imageObsPhotoPreview.setVisibility(android.view.View.VISIBLE);
+                    com.example.m_hikeapp.util.ImageUriUtils.loadImage(this, binding.imageObsPhotoPreview, capturedPhotoUriStr);
+                    uploadPhotoToImgBb(capturedPhotoUriStr);
                 }
             });
+
+    /**
+     * Feature: Voice-to-Text for comments (Fix for GSA onError 65561).
+     * Using RecognizerIntent for a robust system-handled UI experience.
+     */
+    private final androidx.activity.result.ActivityResultLauncher<android.content.Intent> voiceInputLauncher =
+            registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    java.util.ArrayList<String> matches = result.getData().getStringArrayListExtra(
+                            android.speech.RecognizerIntent.EXTRA_RESULTS);
+                    if (matches != null && !matches.isEmpty()) {
+                        String spokenText = matches.get(0);
+                        android.text.Editable currentEditable = binding.editTextObsComment.getText();
+                        String currentText = (currentEditable != null) ? currentEditable.toString() : "";
+                        if (!currentText.isEmpty()) {
+                            binding.editTextObsComment.setText(currentText + " " + spokenText);
+                        } else {
+                            binding.editTextObsComment.setText(spokenText);
+                        }
+                        binding.editTextObsComment.setSelection(binding.editTextObsComment.getText().length());
+                    }
+                }
+            });
+
+    private final androidx.activity.result.ActivityResultLauncher<String> requestAudioPermissionLauncher =
+            registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    startVoiceInput();
+                } else {
+                    Toast.makeText(this, "Audio permission is required for voice input", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+    private void startVoiceInput() {
+        android.content.Intent intent = new android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, java.util.Locale.getDefault());
+        intent.putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak now to add to your comment...");
+        try {
+            voiceInputLauncher.launch(intent);
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(this, "Speech recognition is not supported on this device", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void uploadPhotoToImgBb(String uriStr) {
+        isUploadingPhoto = true;
+        binding.buttonSaveObservation.setEnabled(false);
+        android.widget.Toast.makeText(this, "Uploading photo to ImgBB...", android.widget.Toast.LENGTH_SHORT).show();
+        com.example.m_hikeapp.util.ImgBbHelper.uploadImage(this, uriStr, new com.example.m_hikeapp.util.ImgBbHelper.UploadCallback() {
+            @Override
+            public void onSuccess(String imageUrl) {
+                isUploadingPhoto = false;
+                binding.buttonSaveObservation.setEnabled(true);
+                capturedPhotoUriStr = imageUrl;
+                com.example.m_hikeapp.util.ImageUriUtils.loadImage(AddObservationActivity.this, binding.imageObsPhotoPreview, imageUrl);
+                android.widget.Toast.makeText(AddObservationActivity.this, "Photo uploaded to ImgBB!", android.widget.Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                isUploadingPhoto = false;
+                binding.buttonSaveObservation.setEnabled(true);
+                android.util.Log.w("AddObservationActivity", "ImgBB upload failed: " + e.getMessage());
+            }
+        });
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,6 +145,7 @@ public class AddObservationActivity extends AppCompatActivity {
         setupToolbar();
         lockTimeToNow();     // G4: obs_time is auto-set to current time, not editable
         setupPhotoButton();
+        setupVoiceButton();
         setupSaveButton();
 
         long observationId = getIntent().getLongExtra(HikeDetailActivity.EXTRA_OBSERVATION_ID, -1L);
@@ -125,6 +195,17 @@ public class AddObservationActivity extends AppCompatActivity {
                 capturePhotoLauncher.launch(currentCaptureUri);
             } catch (java.io.IOException e) {
                 Toast.makeText(this, "Failed to create image file", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void setupVoiceButton() {
+        binding.inputLayoutObsComment.setEndIconOnClickListener(v -> {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
+                    == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                startVoiceInput();
+            } else {
+                requestAudioPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO);
             }
         });
     }
@@ -216,8 +297,7 @@ public class AddObservationActivity extends AppCompatActivity {
         }
         if (obs.getPhotoUri() != null && !obs.getPhotoUri().isEmpty()) {
             capturedPhotoUriStr = obs.getPhotoUri();
-            binding.imageObsPhotoPreview.setImageURI(android.net.Uri.parse(obs.getPhotoUri()));
-            binding.imageObsPhotoPreview.setVisibility(android.view.View.VISIBLE);
+            com.example.m_hikeapp.util.ImageUriUtils.loadImage(this, binding.imageObsPhotoPreview, obs.getPhotoUri());
         }
     }
 

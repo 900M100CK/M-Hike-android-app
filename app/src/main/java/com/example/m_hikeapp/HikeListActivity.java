@@ -14,12 +14,20 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.m_hikeapp.adapter.HikeAdapter;
+import com.example.m_hikeapp.adapter.PublicHikeAdapter;
 import com.example.m_hikeapp.databinding.ActivityHikeListBinding;
 import com.example.m_hikeapp.model.Hike;
+import com.example.m_hikeapp.model.Observation;
 import com.example.m_hikeapp.repository.HikeRepository;
+import com.example.m_hikeapp.sync.FirebaseSyncHelper;
+import com.google.android.material.tabs.TabLayout;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Main screen: displays all saved hikes in a {@link androidx.recyclerview.widget.RecyclerView},
@@ -33,7 +41,7 @@ import java.util.List;
  * </ul>
  */
 public class HikeListActivity extends AppCompatActivity
-        implements HikeAdapter.HikeClickListener {
+        implements HikeAdapter.HikeClickListener, PublicHikeAdapter.PublicHikeClickListener {
 
     // -------------------------------------------------------------------------
     // Constants
@@ -46,6 +54,12 @@ public class HikeListActivity extends AppCompatActivity
     private ActivityHikeListBinding binding;
     private HikeRepository          repository;
     private HikeAdapter             adapter;
+    private PublicHikeAdapter       publicAdapter;
+    private boolean                 isOnlineFeed = false;
+    private List<Map<String, Object>> currentPublicHikes = new ArrayList<>();
+
+    public static Hike selectedPublicHike;
+    public static List<Observation> selectedPublicObservations;
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -66,10 +80,12 @@ public class HikeListActivity extends AppCompatActivity
         setContentView(binding.getRoot());
 
         setupToolbar();
+        setupTabs();
         setupRecyclerView();
         setupSearchBar();
         setupFab();
         setupDeleteAllButton();
+        setupAddSamplesButton();
         setupFilterButton();
     }
 
@@ -81,8 +97,11 @@ public class HikeListActivity extends AppCompatActivity
             finish();
             return;
         }
-        // Reload data whenever we return from Add/Edit/Detail screens.
-        loadAllHikes();
+        if (isOnlineFeed) {
+            loadPublicFeed();
+        } else {
+            loadAllHikes();
+        }
         loadLiveWeather();
     }
 
@@ -128,16 +147,41 @@ public class HikeListActivity extends AppCompatActivity
         }
     }
 
+    private void setupTabs() {
+        if (binding.tabLayout == null) return;
+        binding.tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                isOnlineFeed = (tab.getPosition() == 1);
+                binding.recyclerHikes.setAdapter(isOnlineFeed ? publicAdapter : adapter);
+
+                int visibility = isOnlineFeed ? View.GONE : View.VISIBLE;
+                binding.buttonFilter.setVisibility(visibility);
+                binding.buttonAddSamples.setVisibility(visibility);
+                binding.buttonDeleteAll.setVisibility(visibility);
+                binding.fabAddHike.setVisibility(visibility);
+
+                binding.editTextSearch.setText("");
+
+                if (isOnlineFeed) {
+                    loadPublicFeed();
+                } else {
+                    loadAllHikes();
+                }
+            }
+            @Override public void onTabUnselected(TabLayout.Tab tab) {}
+            @Override public void onTabReselected(TabLayout.Tab tab) {}
+        });
+    }
+
     private void setupRecyclerView() {
         adapter = new HikeAdapter(this);
+        String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        publicAdapter = new PublicHikeAdapter(uid, this);
         binding.recyclerHikes.setLayoutManager(new LinearLayoutManager(this));
         binding.recyclerHikes.setAdapter(adapter);
     }
 
-    /**
-     * Wires the search input to trigger a live name-search after each keystroke.
-     * An empty query reloads the full list.
-     */
     private void setupSearchBar() {
         binding.editTextSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int st, int cnt, int a) {}
@@ -146,27 +190,47 @@ public class HikeListActivity extends AppCompatActivity
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 String query = s.toString().trim();
-                if (query.isEmpty()) {
-                    loadAllHikes();
+                if (isOnlineFeed) {
+                    if (query.isEmpty()) {
+                        submitPublicList(currentPublicHikes);
+                    } else {
+                        String q = query.toLowerCase();
+                        List<Map<String, Object>> filtered = new ArrayList<>();
+                        for (Map<String, Object> map : currentPublicHikes) {
+                            Hike h = (Hike) map.get("hike");
+                            if (h != null && h.getName().toLowerCase().contains(q)) {
+                                filtered.add(map);
+                            }
+                        }
+                        submitPublicList(filtered);
+                    }
                 } else {
-                    repository.searchHikesByName(query, HikeListActivity.this::submitList);
+                    if (query.isEmpty()) {
+                        loadAllHikes();
+                    } else {
+                        repository.searchHikesByName(query, HikeListActivity.this::submitList);
+                    }
                 }
             }
         });
     }
 
-    /** FAB navigates to {@link AddHikeActivity} to create a new hike. */
     private void setupFab() {
         binding.fabAddHike.setOnClickListener(v ->
                 startActivity(new Intent(this, AddHikeActivity.class)));
     }
 
-    /** "Delete All" overflow/toolbar action with confirmation dialog. */
     private void setupDeleteAllButton() {
         binding.buttonDeleteAll.setOnClickListener(v -> confirmDeleteAll());
     }
 
-    /** Filter button navigates to {@link SearchFilterActivity}. */
+    private void setupAddSamplesButton() {
+        binding.buttonAddSamples.setOnClickListener(v -> {
+            Toast.makeText(this, "Seeding sample data...", Toast.LENGTH_SHORT).show();
+            com.example.m_hikeapp.util.DevSeedHelper.seedIfEmpty(this, this::loadAllHikes);
+        });
+    }
+
     private void setupFilterButton() {
         binding.buttonFilter.setOnClickListener(v ->
                 startActivity(new Intent(this, SearchFilterActivity.class)));
@@ -177,24 +241,35 @@ public class HikeListActivity extends AppCompatActivity
     // -------------------------------------------------------------------------
 
     private void loadAllHikes() {
-        repository.getAllHikes(hikes -> {
-            if (hikes == null || hikes.isEmpty()) {
-                com.example.m_hikeapp.util.DevSeedHelper.seedIfEmpty(this, () ->
-                        repository.getAllHikes(this::submitList));
-            } else {
-                submitList(hikes);
+        repository.getAllHikes(this::submitList);
+    }
+
+    private void submitList(List<Hike> hikes) {
+        if (isOnlineFeed) return;
+        adapter.submitList(hikes);
+        boolean empty = hikes.isEmpty();
+        binding.textEmptyState.setVisibility(empty ? View.VISIBLE : View.GONE);
+        binding.imgEmptyState.setVisibility(empty ? View.VISIBLE : View.GONE);
+    }
+
+    private void loadPublicFeed() {
+        FirebaseSyncHelper.getInstance().fetchPublicHikes(new FirebaseSyncHelper.PublicFetchCallback() {
+            @Override
+            public void onSuccess(List<Map<String, Object>> publicHikesData) {
+                currentPublicHikes = publicHikesData;
+                submitPublicList(publicHikesData);
+            }
+            @Override
+            public void onFailure(Exception e) {
+                Toast.makeText(HikeListActivity.this, "Failed to load public feed", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    /**
-     * Submits a new list to the adapter and toggles the empty-state view.
-     *
-     * @param hikes The hike list to display.
-     */
-    private void submitList(List<Hike> hikes) {
-        adapter.submitList(hikes);
-        boolean empty = hikes.isEmpty();
+    private void submitPublicList(List<Map<String, Object>> list) {
+        if (!isOnlineFeed) return;
+        publicAdapter.submitList(list);
+        boolean empty = list.isEmpty();
         binding.textEmptyState.setVisibility(empty ? View.VISIBLE : View.GONE);
         binding.imgEmptyState.setVisibility(empty ? View.VISIBLE : View.GONE);
     }
@@ -213,13 +288,14 @@ public class HikeListActivity extends AppCompatActivity
     }
 
     private void deleteAllHikes() {
-        repository.deleteAllHikes((success, message) ->
-                Toast.makeText(this, message, Toast.LENGTH_SHORT).show());
-        // onResume() will refresh the list automatically.
+        repository.deleteAllHikes((success, message) -> {
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+            loadAllHikes();
+        });
     }
 
     // -------------------------------------------------------------------------
-    // HikeClickListener implementation
+    // HikeClickListener implementation (Local)
     // -------------------------------------------------------------------------
 
     @Override
@@ -241,5 +317,65 @@ public class HikeListActivity extends AppCompatActivity
                         }))
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
+    }
+
+    @Override
+    public void onHikePublish(Hike hike) {
+        new AlertDialog.Builder(this)
+            .setTitle("Publish Hike")
+            .setMessage("Do you want to share '" + hike.getName() + "' to the online feed?")
+            .setPositiveButton("Publish", (dialog, which) -> {
+                FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+                if (user == null) return;
+
+                repository.getObservationsForHike(hike.getId(), observations -> {
+                    FirebaseSyncHelper.getInstance().publishPublicHike(
+                        user.getUid(),
+                        user.getEmail() != null ? user.getEmail() : "anonymous",
+                        hike,
+                        observations,
+                        new FirebaseSyncHelper.PushCallback() {
+                            @Override
+                            public void onSuccess(Hike h) {
+                                Toast.makeText(HikeListActivity.this, "Published!", Toast.LENGTH_SHORT).show();
+                            }
+                            @Override
+                            public void onFailure(Hike h, Exception e) {
+                                Toast.makeText(HikeListActivity.this, "Failed", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    );
+                });
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+    }
+
+    // -------------------------------------------------------------------------
+    // PublicHikeClickListener implementation (Online)
+    // -------------------------------------------------------------------------
+
+    @Override
+    public void onHikeClick(Hike hike, List<Observation> observations) {
+        selectedPublicHike = hike;
+        selectedPublicObservations = observations;
+        Intent intent = new Intent(this, HikeDetailActivity.class);
+        intent.putExtra(EXTRA_HIKE_ID, hike.getId());
+        intent.putExtra("IS_ONLINE", true);
+        startActivity(intent);
+    }
+
+    @Override
+    public void onHikeUnpublish(long hikeId, String authorUid) {
+        new AlertDialog.Builder(this)
+            .setTitle("Unpublish Hike")
+            .setMessage("Remove this hike from the public feed?")
+            .setPositiveButton("Remove", (dialog, which) -> {
+                FirebaseSyncHelper.getInstance().removePublicHike(authorUid, hikeId);
+                Toast.makeText(this, "Removed from feed", Toast.LENGTH_SHORT).show();
+                loadPublicFeed();
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
     }
 }

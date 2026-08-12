@@ -138,6 +138,23 @@ public class HikeRepository {
         });
     }
 
+    private void syncObservationToFirebase(Observation obs) {
+        firebaseSync.pushObservation(obs, new FirebaseSyncHelper.ObsPushCallback() {
+            @Override
+            public void onSuccess(Observation synced) {
+                executor.execute(() -> {
+                    synced.setSynced(true);
+                    observationDao.update(synced);
+                });
+            }
+
+            @Override
+            public void onFailure(Observation failed, Exception e) {
+                // Stays saved in Room with isSynced = false
+            }
+        });
+    }
+
     // =========================================================================
     // Hike — write operations
     // =========================================================================
@@ -233,7 +250,7 @@ public class HikeRepository {
     public void deleteAllHikes(OperationCallback callback) {
         executor.execute(() -> {
             try {
-                int rows = hikeDao.deleteByUser(getCurrentUserId());
+                int rows = hikeDao.deleteAll();
                 firebaseSync.removeAllHikes();
                 postToMain(() -> callback.onResult(true, rows + " hike(s) deleted."));
             } catch (Exception e) {
@@ -246,24 +263,63 @@ public class HikeRepository {
     // Hike — read operations
     // =========================================================================
 
-    /**
-     * Asynchronously retrieves all hikes for current user, newest first.
-     * Also retries background sync for any unsynced local hikes.
-     *
-     * @param callback Delivers the result list on the main thread.
-     */
     public void getAllHikes(HikeListCallback callback) {
         executor.execute(() -> {
             String currentUserId = getCurrentUserId();
             List<Hike> hikes = hikeDao.getByUser(currentUserId);
 
-            // Retry unsynced hikes if network is available
-            List<Hike> unsynced = hikeDao.getUnsyncedByUser(currentUserId);
-            for (Hike u : unsynced) {
+            // 1. Retry unsynced hikes
+            List<Hike> unsyncedHikes = hikeDao.getUnsyncedByUser(currentUserId);
+            for (Hike u : unsyncedHikes) {
                 syncHikeToFirebase(u);
             }
 
-            postToMain(() -> callback.onResult(hikes));
+            // 2. Aggressive retry: Sync ALL unsynced observations in the database
+            List<Observation> unsyncedObs = observationDao.getAllUnsynced();
+            for (Observation o : unsyncedObs) {
+                syncObservationToFirebase(o);
+            }
+
+            // 3. Fetch from Firebase to ensure 2-way sync
+            firebaseSync.fetchHikes(new FirebaseSyncHelper.FetchCallback() {
+                @Override
+                public void onSuccess(java.util.List<Hike> cloudHikes, java.util.Map<Long, java.util.List<Observation>> obsMap) {
+                    executor.execute(() -> {
+                        for (Hike cloudHike : cloudHikes) {
+                            Hike existing = hikeDao.getById(cloudHike.getId());
+                            cloudHike.setSynced(true);
+                            if (existing == null) {
+                                hikeDao.insert(cloudHike);
+                            } else {
+                                hikeDao.update(cloudHike);
+                            }
+                            
+                            java.util.List<Observation> cloudObs = obsMap.get(cloudHike.getId());
+                            if (cloudObs != null) {
+                                for (Observation o : cloudObs) {
+                                    Observation existObs = observationDao.getById(o.getId());
+                                    o.setSynced(true);
+                                    if (existObs == null) {
+                                        observationDao.insert(o);
+                                    } else {
+                                        observationDao.update(o);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Return the fully synchronized local list
+                        java.util.List<Hike> updatedHikes = hikeDao.getByUser(currentUserId);
+                        postToMain(() -> callback.onResult(updatedHikes));
+                    });
+                }
+                
+                @Override
+                public void onFailure(Exception e) {
+                    // Fallback to local on failure
+                    postToMain(() -> callback.onResult(hikes));
+                }
+            });
         });
     }
 
@@ -378,9 +434,15 @@ public class HikeRepository {
      * @param callback    Success flag and new row ID (or error message).
      */
     public void addObservation(Observation observation, OperationCallback callback) {
+        observation.setSynced(false);
         executor.execute(() -> {
             try {
                 long newId = observationDao.insert(observation);
+                observation.setId(newId);
+
+                // Sync to Firebase
+                syncObservationToFirebase(observation);
+
                 postToMain(() -> callback.onResult(true, String.valueOf(newId)));
             } catch (Exception e) {
                 postToMain(() -> callback.onResult(false, "Failed to save observation. Please try again."));
@@ -395,10 +457,14 @@ public class HikeRepository {
      * @param callback    Success flag and status message.
      */
     public void updateObservation(Observation observation, OperationCallback callback) {
+        observation.setSynced(false);
         executor.execute(() -> {
             try {
                 int rows = observationDao.update(observation);
                 boolean ok = rows > 0;
+                if (ok) {
+                    syncObservationToFirebase(observation);
+                }
                 postToMain(() -> callback.onResult(ok,
                         ok ? "Observation updated." : "Failed to update observation."));
             } catch (Exception e) {
@@ -423,6 +489,9 @@ public class HikeRepository {
                 }
                 int rows = observationDao.delete(obs);
                 boolean ok = rows > 0;
+                if (ok) {
+                    firebaseSync.removeObservation(obs.getHikeId(), observationId);
+                }
                 postToMain(() -> callback.onResult(ok,
                         ok ? "Observation deleted." : "Failed to delete observation."));
             } catch (Exception e) {
@@ -444,6 +513,13 @@ public class HikeRepository {
     public void getObservationsForHike(long hikeId, ObservationListCallback callback) {
         executor.execute(() -> {
             List<Observation> obs = observationDao.getForHike(hikeId);
+
+            // Retry unsynced observations
+            List<Observation> unsynced = observationDao.getUnsyncedForHike(hikeId);
+            for (Observation u : unsynced) {
+                syncObservationToFirebase(u);
+            }
+
             postToMain(() -> callback.onResult(obs));
         });
     }

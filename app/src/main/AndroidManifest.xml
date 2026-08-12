@@ -15,9 +15,19 @@
     <!-- Feature G2: photo capture for hikes -->
     <uses-permission android:name="android.permission.CAMERA" />
 
+    <!-- Voice to Text support -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
+
+    <queries>
+        <!-- Speech Recognition intent -->
+        <intent>
+            <action android:name="android.intent.action.RECOGNIZE_SPEECH" />
+        </intent>
+    </queries>
 
     <application
         android:name=".MhikeApplication"
@@ -95,7 +105,8 @@
             android:name=".HikeMapActivity"
             android:exported="false"
             android:label="@string/title_hike_map"
-            android:parentActivityName=".HikeDetailActivity" />
+            android:parentActivityName=".HikeDetailActivity"
+            android:hardwareAccelerated="false" />
 
         <!-- Feature D: Advanced search & filter -->
         <activity

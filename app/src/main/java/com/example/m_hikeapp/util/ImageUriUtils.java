@@ -218,4 +218,32 @@ public final class ImageUriUtils {
     public static String getAuthority(Context context) {
         return context.getPackageName() + AUTHORITY_SUFFIX;
     }
+
+    /**
+     * Loads a local URI or remote ImgBB URL into an ImageView seamlessly using Glide.
+     *
+     * @param context     any context.
+     * @param imageView   target ImageView.
+     * @param photoUriStr local file/content URI or remote HTTP(S) URL.
+     */
+    public static void loadImage(Context context, android.widget.ImageView imageView, @Nullable String photoUriStr) {
+        if (context == null || imageView == null) return;
+        if (photoUriStr == null || photoUriStr.trim().isEmpty()) {
+            imageView.setImageDrawable(null);
+            imageView.setVisibility(android.view.View.GONE);
+            return;
+        }
+        imageView.setVisibility(android.view.View.VISIBLE);
+        try {
+            com.bumptech.glide.Glide.with(context)
+                    .load(photoUriStr)
+                    .into(imageView);
+        } catch (Exception e) {
+            try {
+                imageView.setImageURI(Uri.parse(photoUriStr));
+            } catch (Exception ignored) {
+            }
+        }
+    }
 }
+

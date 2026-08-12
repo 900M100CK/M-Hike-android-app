@@ -98,8 +98,7 @@ public class ObservationAdapter extends ListAdapter<Observation, ObservationAdap
 
             // Photo preview
             if (obs.getPhotoUri() != null && !obs.getPhotoUri().isEmpty()) {
-                binding.imageObsItemPhoto.setImageURI(android.net.Uri.parse(obs.getPhotoUri()));
-                binding.imageObsItemPhoto.setVisibility(android.view.View.VISIBLE);
+                com.example.m_hikeapp.util.ImageUriUtils.loadImage(binding.getRoot().getContext(), binding.imageObsItemPhoto, obs.getPhotoUri());
             } else {
                 binding.imageObsItemPhoto.setVisibility(android.view.View.GONE);
             }

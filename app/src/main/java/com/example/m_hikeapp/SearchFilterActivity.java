@@ -79,6 +79,13 @@ public class SearchFilterActivity extends AppCompatActivity {
                 Toast.makeText(SearchFilterActivity.this,
                         R.string.msg_delete_from_list, Toast.LENGTH_SHORT).show();
             }
+
+            @Override
+            public void onHikePublish(com.example.m_hikeapp.model.Hike hike) {
+                // Publishing not available from the filter screen to keep scope simple.
+                Toast.makeText(SearchFilterActivity.this,
+                        "Publishing from filter list is not supported", Toast.LENGTH_SHORT).show();
+            }
         });
         binding.recyclerFilterResults.setLayoutManager(
                 new androidx.recyclerview.widget.LinearLayoutManager(this));

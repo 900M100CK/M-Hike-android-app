@@ -64,6 +64,10 @@ dependencies {
     implementation(libs.room.common)
     annotationProcessor(libs.room.compiler)
 
+    // ── Glide Image Loading (ImgBB / Web / Local) ──────────────────────────────
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(libs.ext.junit)

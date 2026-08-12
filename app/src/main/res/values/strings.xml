@@ -61,6 +61,8 @@
     <string name="action_apply_filter">Apply Filter</string>
     <string name="action_clear">Clear</string>
     <string name="action_add_observation">Add Observation</string>
+    <string name="action_reset_db">Reset Database</string>
+    <string name="action_add_samples">Add Sample Data</string>
 
     <!-- Dialog titles and messages -->
     <string name="dialog_summary_title">Confirm Hike Details</string>

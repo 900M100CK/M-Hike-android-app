@@ -35,43 +35,69 @@ public class LoginActivity extends AppCompatActivity {
         btnRegister.setOnClickListener(v -> registerUser());
     }
 
+    private void showAlert(String title, String message) {
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .show();
+    }
+
     private void loginUser() {
         String email = etEmail.getText() != null ? etEmail.getText().toString().trim() : "";
         String password = etPassword.getText() != null ? etPassword.getText().toString().trim() : "";
 
         if (email.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this, "Please complete all fields", Toast.LENGTH_SHORT).show();
+            showAlert("Lỗi", "Vui lòng nhập đầy đủ email và mật khẩu");
             return;
         }
 
         mAuth.signInWithEmailAndPassword(email, password)
             .addOnSuccessListener(authResult -> {
-                Toast.makeText(this, "Login successful", Toast.LENGTH_SHORT).show();
+                etPassword.setText(""); // clear password from memory
+                Toast.makeText(this, "Đăng nhập thành công", Toast.LENGTH_SHORT).show();
                 startActivity(new Intent(LoginActivity.this, HikeListActivity.class));
                 finish();
             })
-            .addOnFailureListener(e -> 
-                Toast.makeText(this, "Auth failed: " + e.getMessage(), Toast.LENGTH_LONG).show()
-            );
+            .addOnFailureListener(e -> {
+                etPassword.setText("");
+                showAlert("Lỗi đăng nhập", "Sai tên đăng nhập hoặc mật khẩu: " + e.getMessage());
+            });
+    }
+
+    private boolean isPasswordStrong(String password) {
+        // Minimum 8 characters, at least 1 uppercase, 1 lowercase, 1 number, 1 special character
+        String passwordPattern = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!])(?=\\S+$).{8,}$";
+        return password.matches(passwordPattern);
     }
 
     private void registerUser() {
         String email = etEmail.getText() != null ? etEmail.getText().toString().trim() : "";
         String password = etPassword.getText() != null ? etPassword.getText().toString().trim() : "";
 
-        if (email.isEmpty() || password.length() < 6) {
-            Toast.makeText(this, "Password must be at least 6 characters", Toast.LENGTH_SHORT).show();
+        if (email.isEmpty()) {
+            showAlert("Lỗi", "Vui lòng nhập email");
+            return;
+        }
+        if (!isPasswordStrong(password)) {
+            showAlert("Lỗi", "Mật khẩu phải dài ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt");
             return;
         }
 
         mAuth.createUserWithEmailAndPassword(email, password)
             .addOnSuccessListener(authResult -> {
-                Toast.makeText(this, "Account created successfully", Toast.LENGTH_SHORT).show();
+                etPassword.setText(""); // clear password
+                Toast.makeText(this, "Tạo tài khoản thành công", Toast.LENGTH_SHORT).show();
                 startActivity(new Intent(LoginActivity.this, HikeListActivity.class));
                 finish();
             })
-            .addOnFailureListener(e -> 
-                Toast.makeText(this, "Registration failed: " + e.getMessage(), Toast.LENGTH_LONG).show()
-            );
+            .addOnFailureListener(e -> {
+                etPassword.setText(""); // clear password on fail
+                if (e instanceof com.google.firebase.auth.FirebaseAuthUserCollisionException) {
+                    showAlert("Lỗi đăng ký", "Email đã được sử dụng");
+                } else {
+                    showAlert("Lỗi đăng ký", e.getMessage());
+                }
+            });
     }
 }

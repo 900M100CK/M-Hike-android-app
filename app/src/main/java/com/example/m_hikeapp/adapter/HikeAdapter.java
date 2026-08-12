@@ -33,6 +33,8 @@ public class HikeAdapter extends ListAdapter<Hike, HikeAdapter.HikeViewHolder> {
         void onHikeClick(Hike hike);
         /** Called when the user taps the delete icon on the card. */
         void onHikeDelete(Hike hike);
+        /** Called when the user taps the publish icon on the card. */
+        void onHikePublish(Hike hike);
     }
 
     // -------------------------------------------------------------------------
@@ -114,7 +116,7 @@ public class HikeAdapter extends ListAdapter<Hike, HikeAdapter.HikeViewHolder> {
 
             // Hike cover photo
             if (hike.getPhotoUri() != null && !hike.getPhotoUri().isEmpty()) {
-                binding.imageHikeCover.setImageURI(android.net.Uri.parse(hike.getPhotoUri()));
+                com.example.m_hikeapp.util.ImageUriUtils.loadImage(binding.getRoot().getContext(), binding.imageHikeCover, hike.getPhotoUri());
                 binding.imageHikeCover.setPadding(0, 0, 0, 0);
             } else {
                 binding.imageHikeCover.setImageResource(com.example.m_hikeapp.R.drawable.ic_hiking);
@@ -122,8 +124,15 @@ public class HikeAdapter extends ListAdapter<Hike, HikeAdapter.HikeViewHolder> {
                 binding.imageHikeCover.setPadding(pad, pad, pad, pad);
             }
 
+            // Hide author, show publish and delete for local hikes
+            binding.textHikeAuthor.setVisibility(android.view.View.GONE);
+            binding.buttonPublishHike.setVisibility(android.view.View.VISIBLE);
+            binding.buttonDeleteHike.setVisibility(android.view.View.VISIBLE);
+
             // Click on whole card -> detail view
             binding.getRoot().setOnClickListener(v -> listener.onHikeClick(hike));
+            // Publish icon
+            binding.buttonPublishHike.setOnClickListener(v -> listener.onHikePublish(hike));
             // Delete icon
             binding.buttonDeleteHike.setOnClickListener(v -> listener.onHikeDelete(hike));
         }

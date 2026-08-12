@@ -92,4 +92,21 @@ public interface ObservationDao {
      */
     @Query("SELECT * FROM observations WHERE id = :id")
     Observation getById(long id);
+
+    /**
+     * Returns all observations for a given hike that haven't been synced to Firebase.
+     *
+     * @param hikeId The parent hike's primary key.
+     * @return List of unsynced observations.
+     */
+    @Query("SELECT * FROM observations WHERE hike_id = :hikeId AND is_synced = 0")
+    List<Observation> getUnsyncedForHike(long hikeId);
+
+    /**
+     * Returns every observation in the database that hasn't been synced.
+     *
+     * @return Global list of pending observations.
+     */
+    @Query("SELECT * FROM observations WHERE is_synced = 0")
+    List<Observation> getAllUnsynced();
 }
